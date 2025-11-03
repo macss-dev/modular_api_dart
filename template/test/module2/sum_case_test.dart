@@ -1,6 +1,6 @@
+import 'package:example/modules/module2/usecases/usecase_1.dart';
 import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
-import '../../lib/modules/module2/usecases/usecase_1.dart';
 
 void main() {
   group('SumCase UseCase', () {

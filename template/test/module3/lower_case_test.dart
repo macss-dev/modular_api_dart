@@ -1,6 +1,6 @@
+import 'package:example/modules/module3/usecases/usecase_3.dart';
 import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
-import '../../lib/modules/module3/usecases/usecase_3.dart';
 
 void main() {
   group('LowerCase UseCase', () {

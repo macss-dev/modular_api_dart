@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:example/middlewares/auth_middleware.dart';
 import 'package:modular_api/modular_api.dart';
 import 'package:example/modules/module1/hello_world.dart';
 import 'package:example/modules/module2/module2_builder.dart';
@@ -10,6 +11,10 @@ Future<void> main(List<String> args) async {
   final port = Env.getInt('PORT');
 
   final api = ModularApi(basePath: '/api');
+
+  // auth
+  api.use(authMiddleware());
+  api.module('auth', authBuilder);
 
   // Direct
   // POST by default

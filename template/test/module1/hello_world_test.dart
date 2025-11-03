@@ -1,6 +1,6 @@
+import 'package:example/modules/module1/hello_world.dart';
 import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
-import '../../lib/modules/module1/hello_world.dart';
 
 void main() {
   group('HelloWorld UseCase', () {

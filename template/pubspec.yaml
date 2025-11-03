@@ -1,14 +1,17 @@
 name: example
 description: A sample modular-api application.
 version: 0.0.1
+publish_to: none
 
 environment:
   sdk: ^3.8.1
 
 # Add regular dependencies here.
 dependencies:
-  modular_api: ^0.0.5
-
+  # modular_api: ^0.0.7
+  # TODO: remove path when publishing
+  modular_api:
+    path: ../../modular_api
 dev_dependencies:
   lints: ^5.0.0
   test: ^1.24.0
