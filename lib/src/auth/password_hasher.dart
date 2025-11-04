@@ -51,10 +51,10 @@ class PasswordHasher {
       // Extract cost from hash (format: $2b$cost$...)
       final parts = hash.split('\$');
       if (parts.length < 4) return true;
-      
+
       final currentCost = int.tryParse(parts[2]);
       if (currentCost == null) return true;
-      
+
       return currentCost < targetCost;
     } catch (e) {
       return true;

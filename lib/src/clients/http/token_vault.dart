@@ -140,5 +140,3 @@ final class TokenVault {
   /// ```
   static Future<void> deleteAll() => _adapter.deleteAll();
 }
-
-

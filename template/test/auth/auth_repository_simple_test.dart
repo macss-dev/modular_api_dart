@@ -42,7 +42,7 @@ void main() {
 
     test('should query user table and get row count', () async {
       final result = await db.query('SELECT COUNT(*) as count FROM auth.user');
-      
+
       expect(result, isNotEmpty);
       expect(result.first['count'], isA<int>());
       expect(result.first['count'], greaterThan(0));
@@ -51,13 +51,17 @@ void main() {
     });
 
     test('should query password table and get row count', () async {
-      final result = await db.query('SELECT COUNT(*) as count FROM auth.password');
-      
+      final result = await db.query(
+        'SELECT COUNT(*) as count FROM auth.password',
+      );
+
       expect(result, isNotEmpty);
       expect(result.first['count'], isA<int>());
       expect(result.first['count'], greaterThan(0));
 
-      print('  ✓ Database has ${result.first['count']} passwords in auth.password');
+      print(
+        '  ✓ Database has ${result.first['count']} passwords in auth.password',
+      );
     });
   });
 
@@ -77,20 +81,23 @@ void main() {
       print('    User ID: ${user['id']}');
     });
 
-    test('getUserByUsername should return null for non-existent user', () async {
-      const username = 'this_user_does_not_exist_xyz';
+    test(
+      'getUserByUsername should return null for non-existent user',
+      () async {
+        const username = 'this_user_does_not_exist_xyz';
 
-      final user = await repo.getUserByUsername(username);
+        final user = await repo.getUserByUsername(username);
 
-      expect(user, isNull);
-      print('  ✓ Correctly returned null for non-existent user');
-    });
+        expect(user, isNull);
+        print('  ✓ Correctly returned null for non-existent user');
+      },
+    );
 
     test('getUserById should find user by ID', () async {
       // First get the example user to know their ID
       final exampleUser = await repo.getUserByUsername('example');
       expect(exampleUser, isNotNull);
-      
+
       final userId = exampleUser!['id'] as int;
 
       // Now fetch by ID
@@ -109,7 +116,7 @@ void main() {
       // Get user ID
       final user = await repo.getUserByUsername('example');
       expect(user, isNotNull);
-      
+
       final userId = user!['id'] as int;
       const correctPassword = 'abc123';
 
@@ -124,7 +131,7 @@ void main() {
       // Get user ID
       final user = await repo.getUserByUsername('example');
       expect(user, isNotNull);
-      
+
       final userId = user!['id'] as int;
       const wrongPassword = 'wrong_password_123';
 
@@ -223,7 +230,9 @@ void main() {
       print('\n  📋 All Users in Database:');
       print('  ${'=' * 58}');
       for (final user in users) {
-        print('  ID: ${user['id']} | ${user['username'].toString().padRight(15)} | ${user['full_name']}');
+        print(
+          '  ID: ${user['id']} | ${user['username'].toString().padRight(15)} | ${user['full_name']}',
+        );
       }
       print('  ${'=' * 58}');
       print('  Total: ${users.length} users\n');

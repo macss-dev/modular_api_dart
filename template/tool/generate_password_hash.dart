@@ -1,4 +1,4 @@
-import 'package:example/utils/password_hasher.dart';
+import 'package:modular_api/modular_api.dart';
 
 /// Helper script to generate bcrypt password hashes for seed data.
 ///
@@ -7,10 +7,7 @@ import 'package:example/utils/password_hasher.dart';
 /// dart run tool/generate_password_hash.dart
 /// ```
 void main() {
-  final passwords = {
-    'abc123': '',
-    'password123': '',
-  };
+  final passwords = {'abc123': '', 'password123': ''};
 
   print('Generating bcrypt password hashes...\n');
   print('=' * 60);
@@ -18,7 +15,7 @@ void main() {
   for (final password in passwords.keys) {
     final hash = PasswordHasher.hash(password);
     passwords[password] = hash;
-    
+
     print('\nPassword: $password');
     print('Hash:     $hash');
     print('-' * 60);

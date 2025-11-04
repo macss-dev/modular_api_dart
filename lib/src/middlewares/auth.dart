@@ -1,12 +1,12 @@
 import 'package:modular_api/modular_api.dart';
 
-/// Authentication middleware that validates JWT access tokens.
+/// Authentication middleware that verifies the JWT access token
 ///
 /// This middleware:
 /// - Extracts the token from the Authorization header (format: `Bearer <token>`)
-/// - Validates the token using `JwtHelper`
-/// - Allows access only if the token type is `access`
-/// - Skips authentication for public routes such as `/auth/*` and `/health`
+/// - Verifies that the token is valid using JwtHelper
+/// - Allows access only if the token is of type "access"
+/// - Excludes public routes such as /auth/* and /health
 ///
 /// Usage:
 /// ```dart
@@ -16,10 +16,11 @@ import 'package:modular_api/modular_api.dart';
 Middleware authMiddleware() {
   return (Handler handler) {
     return (Request request) async {
-      // Get full request path
+      // Get full path
       final fullPath = request.requestedUri.path;
 
       // Public routes that do not require authentication
+      // Check if the path starts with any of these
       if (fullPath.startsWith('/health') ||
           fullPath.startsWith('/docs') ||
           fullPath.contains('/api/auth/')) {
@@ -28,7 +29,7 @@ Middleware authMiddleware() {
 
       // Extract token from Authorization header
       final authHeader = request.headers['authorization'];
-
+      
       if (authHeader == null) {
         return Response.unauthorized(
           'Missing authorization header',
@@ -36,7 +37,7 @@ Middleware authMiddleware() {
         );
       }
 
-      // Expect format "Bearer <token>"
+      // Verify "Bearer <token>" format
       if (!authHeader.startsWith('Bearer ')) {
         return Response.unauthorized(
           'Invalid authorization format. Expected: Bearer <token>',
@@ -44,7 +45,7 @@ Middleware authMiddleware() {
         );
       }
 
-      final token = authHeader.substring(7); // Remove "Bearer " prefix
+      final token = authHeader.substring(7); // Remove "Bearer "
 
       if (token.isEmpty) {
         return Response.unauthorized(
@@ -53,11 +54,11 @@ Middleware authMiddleware() {
         );
       }
 
-      // Validate JWT token
+      // Verify JWT token
       try {
         final payload = JwtHelper.verifyToken(token);
-
-        // Ensure token is an access token
+        
+        // Check that it is an access token
         final tokenType = payload['type'] as String?;
         if (tokenType != 'access') {
           return Response.forbidden(
@@ -66,11 +67,12 @@ Middleware authMiddleware() {
           );
         }
 
-        // Token valid — continue with the request
-        // Optionally add user information to the request context
+        // Token is valid, continue with the request
+        // Add user information to the context (optional)
         final userId = payload['sub'] as String?;
         final username = payload['username'] as String?;
-
+        
+        // We can add this information to the request if needed
         final requestWithUser = request.change(context: {
           'userId': userId,
           'username': username,
@@ -91,7 +93,3 @@ Middleware authMiddleware() {
     };
   };
 }
-
-
-
-

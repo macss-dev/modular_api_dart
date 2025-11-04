@@ -101,10 +101,7 @@ class PostgresClient {
   /// [parameters] - Map of parameter names to values
   ///
   /// Returns the number of affected rows.
-  Future<int> execute(
-    String sql, [
-    Map<String, dynamic>? parameters,
-  ]) async {
+  Future<int> execute(String sql, [Map<String, dynamic>? parameters]) async {
     await _ensureConnected();
 
     final result = await _connection!.execute(
@@ -137,9 +134,7 @@ class PostgresClient {
   ///   await txn.execute(Sql.named('UPDATE ...'));
   /// });
   /// ```
-  Future<T> transaction<T>(
-    Future<T> Function(TxSession) action,
-  ) async {
+  Future<T> transaction<T>(Future<T> Function(TxSession) action) async {
     await _ensureConnected();
 
     return await _connection!.runTx((txn) async {

@@ -111,11 +111,11 @@ void main() {
     test('should encrypt file content (not readable as plain text)', () async {
       await adapter.saveRefresh('user1', 'secret-token-123');
 
-  // Read the file directly from disk
+      // Read the file directly from disk
       final file = File('${tempDir.path}/refresh_tokens.enc');
       final content = await file.readAsString();
 
-  // The content MUST NOT contain the token in plain text
+      // The content MUST NOT contain the token in plain text
       expect(content, isNot(contains('secret-token-123')));
       expect(content, isNot(contains('user1')));
 
@@ -127,7 +127,8 @@ void main() {
     });
 
     test('should handle special characters in tokens', () async {
-      const specialToken = r'token-with-special-chars!@#$%^&*(){}[]|:";,.<>?/~`';
+      const specialToken =
+          r'token-with-special-chars!@#$%^&*(){}[]|:";,.<>?/~`';
       await adapter.saveRefresh('user1', specialToken);
       final token = await adapter.readRefresh('user1');
       expect(token, equals(specialToken));
@@ -231,7 +232,7 @@ void main() {
 
       expect(encrypted1, isNot(equals(encrypted2)));
 
-  // But both must decrypt to the same plaintext
+      // But both must decrypt to the same plaintext
       final decrypted1 = await encryptor.decrypt(encrypted1);
       final decrypted2 = await encryptor.decrypt(encrypted2);
 
@@ -258,7 +259,7 @@ void main() {
       final plaintext = 'secret'.codeUnits;
       final encrypted = await encryptor.encrypt(plaintext);
 
-  // Modify a byte of the encrypted ciphertext
+      // Modify a byte of the encrypted ciphertext
       encrypted[encrypted.length ~/ 2] ^= 0xFF;
 
       expect(

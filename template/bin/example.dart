@@ -13,29 +13,29 @@ Future<void> main(List<String> args) async {
 
   final api = ModularApi(basePath: '/api');
 
-  // auth
+  // Global middlewares
+  api.use(exampleCorsMiddleware());
+  
+  // Auth middleware (will be applied to all routes except public ones)
   api.use(authMiddleware());
+
+  // Authentication module (public routes handled by authMiddleware)
   api.module('auth', authBuilder);
 
-  // Direct
-  // POST by default
-  // POST api/module1/hello-world
+  // Protected modules (require access token)
+  // POST api/module1/hello-world (protected)
   api.module('module1', (m) {
     m.usecase('hello-world', HelloWorld.fromJson);
   });
 
-  // Modular builder from external file
+  // Modular builder from external file (protected)
   api.module('module2', module2Builder);
   api.module('module3', module3Builder);
-
-  // Middlewares
-  api
-  // .use(anotherMiddleware())
-  .use(exampleCorsMiddleware());
 
   await api.serve(port: port);
 
   /// OpenAPI docs URL
   /// You can access the docs at http://localhost:<port>/docs
   stdout.writeln('Docs on http://localhost:$port/docs');
+  stdout.writeln('Health check on http://localhost:$port/health');
 }

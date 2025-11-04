@@ -15,17 +15,18 @@ import 'token_vault.dart';
 ///
 /// This function:
 /// 1. Reads the refresh token from secure storage
-/// 2. Calls POST /v0/auth/refresh with the refresh token
+/// 2. Calls POST /api/auth/refresh with the refresh token
 /// 3. Updates Session.accessToken and Session.accessExp on success
 /// 4. Optionally saves a new refresh token if token rotation is enabled
 Future<bool> _tryRefresh({
   required String baseUrl,
-  required String userId,
+  required String refreshEndpoint,
+  required String user,
 }) async {
-  final rt = await TokenVault.readRefresh(userId);
+  final rt = await TokenVault.readRefresh(user);
   if (rt == null) return false;
 
-  final url = Uri.parse('$baseUrl/auth/refresh');
+  final url = Uri.parse('$baseUrl/$refreshEndpoint');
   try {
     final r = await http
         .post(
@@ -51,7 +52,7 @@ Future<bool> _tryRefresh({
 
       // Update refresh token if rotation is enabled
       if (newRt != null) {
-        await TokenVault.saveRefresh(userId, newRt);
+        await TokenVault.saveRefresh(user, newRt);
       }
 
       return true;
@@ -80,7 +81,7 @@ Future<bool> _tryRefresh({
 ///   endpoint: 'v0/auth/login',
 ///   body: {'username': 'user', 'password': 'pass'},
 ///   auth: true,
-///   userId: 'user123',
+///   user: 'user123',
 /// );
 ///
 /// // Protected endpoint (auto Bearer token + retry on 401)
@@ -90,7 +91,7 @@ Future<bool> _tryRefresh({
 ///     baseUrl: 'https://api.example.com',
 ///     endpoint: 'v0/users/me',
 ///     auth: true,
-///     userId: 'user123',
+///     user: 'user123',
 ///   );
 /// } on AuthReLoginException {
 ///   // Navigate to login screen
@@ -104,7 +105,7 @@ Future<dynamic> httpClient({
   Map<String, dynamic>? body,
   String errorMessage = 'Error in HTTP request',
   bool auth = false,
-  String? userId,
+  String? user,
 }) async {
   try {
     final url = Uri.parse('$baseUrl/$endpoint');
@@ -126,7 +127,8 @@ Future<dynamic> httpClient({
           return get(url, headers: effectiveHeaders)
               .timeout(const Duration(seconds: 30));
         case 'POST':
-          return post(url, headers: effectiveHeaders, body: jsonEncode(body ?? {}))
+          return post(url,
+                  headers: effectiveHeaders, body: jsonEncode(body ?? {}))
               .timeout(const Duration(seconds: 30));
         case 'PATCH':
           return patch(
@@ -156,16 +158,31 @@ Future<dynamic> httpClient({
       if (expiresIn != null) {
         Token.accessExp = DateTime.now().add(Duration(seconds: expiresIn));
       }
-      if (rt != null && userId != null) {
-        await TokenVault.saveRefresh(userId, rt);
+      if (rt != null && user != null) {
+        await TokenVault.saveRefresh(user, rt);
       }
       return m; // Return the login response
     }
 
     // Handle 401 on protected endpoints: try refresh and retry once
     if (response.statusCode == 401 && auth) {
-      if (userId != null) {
-        final refreshed = await _tryRefresh(baseUrl: baseUrl, userId: userId);
+      if (user != null) {
+        // Infer refresh endpoint: if endpoint is 'api/module/...' then use 'api/auth/refresh'
+        // if endpoint is 'v1/resource/...' then use 'v1/auth/refresh', etc.
+        String refreshEndpoint = 'auth/refresh';
+        if (endpoint.contains('/')) {
+          final parts = endpoint.split('/');
+          if (parts.isNotEmpty && parts[0].isNotEmpty) {
+            // Use the first segment as the API prefix
+            refreshEndpoint = '${parts[0]}/auth/refresh';
+          }
+        }
+        
+        final refreshed = await _tryRefresh(
+          baseUrl: baseUrl,
+          refreshEndpoint: refreshEndpoint,
+          user: user,
+        );
         if (refreshed) {
           // Update Authorization header with new token and retry
           effectiveHeaders['Authorization'] = 'Bearer ${Token.accessToken}';
@@ -189,7 +206,7 @@ Future<dynamic> httpClient({
   } catch (e) {
     // Re-throw AuthReLoginException without wrapping
     if (e is AuthReLoginException) rethrow;
-    
+
     stderr.writeln('HTTP Client Error: $e');
     throw Exception('$errorMessage: [Connection error] - $e');
   }

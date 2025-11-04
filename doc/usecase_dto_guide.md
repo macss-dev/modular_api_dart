@@ -7,8 +7,8 @@ This guide provides clear and precise instructions for creating `Input` and `Out
 ## 📋 Overview
 
 Every use case requires two DTO classes:
-- **Input** — extends `Input` base class, represents the request data
-- **Output** — extends `Output` base class, represents the response data
+- **Input** — implements `Input` interface, represents the request data
+- **Output** — implements `Output` interface, represents the response data
 
 Each DTO must implement:
 1. `fromJson` — constructor to deserialize from JSON
@@ -43,7 +43,7 @@ class CasoOutput {
 ```dart
 import 'package:modular_api/modular_api.dart';
 
-class CasoInput extends Input {
+class CasoInput implements Input {
   final int valor;
   final String valor2;
   final double valor3;
@@ -94,7 +94,7 @@ class CasoInput extends Input {
 ```dart
 import 'package:modular_api/modular_api.dart';
 
-class CasoOutput extends Output {
+class CasoOutput implements Output {
   final int valor;
   final String valor2;
   final double valor3;
@@ -165,7 +165,7 @@ Use this table to map Dart types to OpenAPI schema types in `toSchema()`:
 ### Example 1: Complex Input with Lists and Nested Objects
 
 ```dart
-class UserInput extends Input {
+class UserInput implements Input {
   final String name;
   final int age;
   final List<String> roles;
@@ -253,7 +253,7 @@ class Address {
 ### Example 2: Optional Fields
 
 ```dart
-class ProductInput extends Input {
+class ProductInput implements Input {
   final String name;
   final double price;
   final String? description; // Optional field
@@ -304,7 +304,7 @@ class ProductInput extends Input {
 ### Example 3: DateTime Fields
 
 ```dart
-class EventInput extends Input {
+class EventInput implements Input {
   final String title;
   final DateTime startDate;
   final DateTime? endDate; // Optional
@@ -407,7 +407,7 @@ Map<String, dynamic> toSchema() {
 
 When creating or updating Input/Output DTOs, ensure:
 
-- [ ] Class extends `Input` or `Output`
+- [ ] Class implements `Input` or `Output`
 - [ ] All properties are `final`
 - [ ] `fromJson` factory constructor is implemented
 - [ ] `toJson` method is implemented and overrides base class
@@ -430,7 +430,7 @@ Copy and adapt this template for new DTOs:
 ```dart
 import 'package:modular_api/modular_api.dart';
 
-class MyUseCaseInput extends Input {
+class MyUseCaseInput implements Input {
   final String myField;
   // Add more fields here
 
@@ -467,7 +467,7 @@ class MyUseCaseInput extends Input {
   }
 }
 
-class MyUseCaseOutput extends Output {
+class MyUseCaseOutput implements Output {
   final String result;
   // Add more fields here
 

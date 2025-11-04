@@ -54,6 +54,7 @@ class ModularApi {
     if (onBeforeServe != null) {
       await onBeforeServe(_root);
     }
+
     var pipeline = const Pipeline();
     for (final m in _middlewares) {
       pipeline = pipeline.addMiddleware(m);

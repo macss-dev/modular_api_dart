@@ -166,13 +166,13 @@ final class AesGcmEncryptor implements TokenEncryptor {
     }
 
     try {
-  // Extract envelope components
+      // Extract envelope components
       final salt = base64Decode(env['s'] as String);
       final nonce = base64Decode(env['n'] as String);
       final ciph = base64Decode(env['c'] as String);
       final tag = base64Decode(env['t'] as String);
 
-  // Derive key and decrypt
+      // Derive key and decrypt
       final key = await _deriveKey(pass, salt);
       final box = SecretBox(ciph, nonce: nonce, mac: Mac(tag));
       final plain = await algorithm.decrypt(box, secretKey: key);
@@ -273,7 +273,8 @@ final class FileStorageAdapter implements TokenStorageAdapter {
   /// Windows: `%APPDATA%\appName\`
   static String _defaultBaseDir({String appName = 'modular_api'}) {
     final isWindows = Platform.isWindows;
-    final home = Platform.environment[isWindows ? 'USERPROFILE' : 'HOME'] ?? '.';
+    final home =
+        Platform.environment[isWindows ? 'USERPROFILE' : 'HOME'] ?? '.';
 
     if (isWindows) {
       return p.join(home, 'AppData', 'Roaming', appName);
@@ -309,15 +310,14 @@ final class FileStorageAdapter implements TokenStorageAdapter {
 
   /// Writes all tokens to the encrypted file atomically.
   Future<void> _writeAll(Map<String, String> data) async {
-  // Serialize to JSON
+    // Serialize to JSON
     final content = jsonEncode(data);
     final plainBytes = utf8.encode(content);
-
 
     // Encrypt
     final encBytes = await _encryptor.encrypt(plainBytes);
 
-  // Atomic write: write to .tmp and then rename
+    // Atomic write: write to .tmp and then rename
     final tmp = File('${_file.path}.tmp');
     await tmp.writeAsBytes(encBytes, flush: true);
 

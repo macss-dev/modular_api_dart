@@ -115,8 +115,8 @@ void main() {
       final adapter = MemoryStorageAdapter.shared();
       final userIds = adapter.userIds;
 
-  // TokenVault should add the 'rt:' prefix
-  expect(userIds, contains('rt:user1'));
+      // TokenVault should add the 'rt:' prefix
+      expect(userIds, contains('rt:user1'));
       expect(userIds, isNot(contains('user1')));
     });
 

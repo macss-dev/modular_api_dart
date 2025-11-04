@@ -33,41 +33,47 @@ void main() {
   });
 
   group('AuthRepository - User Operations', () {
-    test('getUserByUsername should return user data for existing user', () async {
-      // Arrange
-      const username = 'example';
+    test(
+      'getUserByUsername should return user data for existing user',
+      () async {
+        // Arrange
+        const username = 'example';
 
-      // Act
-      final user = await repo.getUserByUsername(username);
+        // Act
+        final user = await repo.getUserByUsername(username);
 
-      // Assert
-      expect(user, isNotNull, reason: 'User should exist in database');
-      expect(user!['username'], equals(username));
-      expect(user['full_name'], equals('Example User'));
-      expect(user['id'], isA<int>());
-      expect(user['created_at'], isNotNull);
+        // Assert
+        expect(user, isNotNull, reason: 'User should exist in database');
+        expect(user!['username'], equals(username));
+        expect(user['full_name'], equals('Example User'));
+        expect(user['id'], isA<int>());
+        expect(user['created_at'], isNotNull);
 
-      print('✓ Found user: ${user['username']} (${user['full_name']})');
-    });
+        print('✓ Found user: ${user['username']} (${user['full_name']})');
+      },
+    );
 
-    test('getUserByUsername should return null for non-existent user', () async {
-      // Arrange
-      const username = 'nonexistent_user_xyz';
+    test(
+      'getUserByUsername should return null for non-existent user',
+      () async {
+        // Arrange
+        const username = 'nonexistent_user_xyz';
 
-      // Act
-      final user = await repo.getUserByUsername(username);
+        // Act
+        final user = await repo.getUserByUsername(username);
 
-      // Assert
-      expect(user, isNull, reason: 'Non-existent user should return null');
+        // Assert
+        expect(user, isNull, reason: 'Non-existent user should return null');
 
-      print('✓ Correctly returned null for non-existent user');
-    });
+        print('✓ Correctly returned null for non-existent user');
+      },
+    );
 
     test('getUserById should return user data for existing user ID', () async {
       // Arrange - First get a user to know a valid ID
       final exampleUser = await repo.getUserByUsername('example');
       expect(exampleUser, isNotNull);
-      
+
       final userId = exampleUser!['id'] as int;
 
       // Act
@@ -87,7 +93,7 @@ void main() {
       // Arrange
       final user = await repo.getUserByUsername('example');
       expect(user, isNotNull);
-      
+
       final userId = user!['id'] as int;
       const correctPassword = 'abc123';
 
@@ -104,7 +110,7 @@ void main() {
       // Arrange
       final user = await repo.getUserByUsername('example');
       expect(user, isNotNull);
-      
+
       final userId = user!['id'] as int;
       const wrongPassword = 'wrongpassword123';
 
@@ -133,21 +139,24 @@ void main() {
   });
 
   group('AuthRepository - Authentication', () {
-    test('authenticate should return user data for correct credentials', () async {
-      // Arrange
-      const username = 'example';
-      const password = 'abc123';
+    test(
+      'authenticate should return user data for correct credentials',
+      () async {
+        // Arrange
+        const username = 'example';
+        const password = 'abc123';
 
-      // Act
-      final user = await repo.authenticate(username, password);
+        // Act
+        final user = await repo.authenticate(username, password);
 
-      // Assert
-      expect(user, isNotNull, reason: 'Authentication should succeed');
-      expect(user!['username'], equals(username));
-      expect(user['full_name'], equals('Example User'));
+        // Assert
+        expect(user, isNotNull, reason: 'Authentication should succeed');
+        expect(user!['username'], equals(username));
+        expect(user['full_name'], equals('Example User'));
 
-      print('✓ Authentication successful for: $username');
-    });
+        print('✓ Authentication successful for: $username');
+      },
+    );
 
     test('authenticate should return null for incorrect password', () async {
       // Arrange
@@ -193,7 +202,9 @@ void main() {
 
     test('should successfully query password table', () async {
       // Act
-      final passwords = await db.query('SELECT COUNT(*) as count FROM auth.password');
+      final passwords = await db.query(
+        'SELECT COUNT(*) as count FROM auth.password',
+      );
 
       // Assert
       expect(passwords, isNotEmpty);

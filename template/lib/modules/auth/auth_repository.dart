@@ -1,5 +1,5 @@
+import 'package:modular_api/modular_api.dart';
 import '../../db/postgres_client.dart';
-import '../../utils/password_hasher.dart';
 
 /// Repository for authentication-related database operations.
 ///
@@ -81,7 +81,7 @@ class AuthRepository {
     // Verify password
     final userId = user['id'] as int;
     final isValid = await verifyPassword(userId, password);
-    
+
     if (!isValid) {
       return null;
     }
@@ -160,7 +160,7 @@ class AuthRepository {
   /// Updates a user's password.
   Future<void> updatePassword(int userId, String newPassword) async {
     final passwordHash = PasswordHasher.hash(newPassword);
-    
+
     await _db.execute(
       '''
       UPDATE auth.password
@@ -168,10 +168,7 @@ class AuthRepository {
           updated_at = CURRENT_TIMESTAMP
       WHERE id_user = @userId
       ''',
-      {
-        'userId': userId,
-        'passwordHash': passwordHash,
-      },
+      {'userId': userId, 'passwordHash': passwordHash},
     );
   }
 
@@ -190,10 +187,7 @@ class AuthRepository {
       VALUES (@username, @fullName)
       RETURNING id
       ''',
-      {
-        'username': username,
-        'fullName': fullName,
-      },
+      {'username': username, 'fullName': fullName},
     );
 
     final userId = userResults.first['id'] as int;
@@ -205,10 +199,7 @@ class AuthRepository {
       INSERT INTO auth.password (id_user, password_hash)
       VALUES (@userId, @passwordHash)
       ''',
-      {
-        'userId': userId,
-        'passwordHash': passwordHash,
-      },
+      {'userId': userId, 'passwordHash': passwordHash},
     );
 
     return userId;
