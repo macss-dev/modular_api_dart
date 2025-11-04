@@ -140,7 +140,7 @@ dart pub get
 
 ## 🔐 Authentication with httpClient
 
-The intelligent `httpClient` simplifies authentication by automatically managing tokens:
+The intelligent `httpClient` simplifies authentication by automatically managing tokens for single-user applications:
 
 ```dart
 import 'package:modular_api/modular_api.dart';
@@ -154,8 +154,7 @@ Future<void> authenticatedFlow() async {
     baseUrl: baseUrl,
     endpoint: 'api/auth/login',
     body: {'username': 'user', 'password': 'pass'},
-    auth: true,
-    user: 'user123',  // Unique user identifier
+    auth: true,  // Auto-captures tokens from response
   ) as Map<String, dynamic>;
   
   print('Access token: ${loginResponse['access_token']}');
@@ -170,8 +169,7 @@ Future<void> authenticatedFlow() async {
       baseUrl: baseUrl,
       endpoint: 'api/users/profile',
       body: {'user_id': 123},
-      auth: true,
-      user: 'user123',
+      auth: true,  // Auto-attaches Bearer token
     );
     print('Profile: $profile');
   } on AuthReLoginException {
@@ -181,7 +179,7 @@ Future<void> authenticatedFlow() async {
 }
 ```
 
-See **[docs/http_client_guide.md](docs/http_client_guide.md)** for complete examples and configuration.
+See **[doc/http_client_guide.md](doc/http_client_guide.md)** for complete examples and configuration.
 
 ---
 

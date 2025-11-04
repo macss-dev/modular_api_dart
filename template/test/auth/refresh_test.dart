@@ -431,8 +431,12 @@ void main() {
     });
 
     test('should handle multiple sequential refreshes', () async {
-      // Arrange
-      var currentToken = await performLogin();
+      // Arrange - Create fresh token for this test to avoid interference
+      final loginUseCase = LoginUseCase(
+        input: LoginInput(username: 'example', password: 'abc123'),
+      );
+      await loginUseCase.execute();
+      var currentToken = loginUseCase.output.refreshToken;
 
       // Act - Perform 3 sequential refreshes
       for (var i = 0; i < 3; i++) {
@@ -449,12 +453,19 @@ void main() {
       }
 
       // Assert - Final token should still work
+      // Note: No rotation on final refresh to verify current token is valid
       final finalUseCase = RefreshUseCase(
         input: RefreshInput(refreshToken: currentToken),
+        enableRotation: false, // Explicitly disable rotation for final check
       );
       await finalUseCase.execute();
 
       expect(finalUseCase.output.accessToken, isNotEmpty);
+      expect(
+        finalUseCase.output.refreshToken,
+        isNull,
+        reason: 'Should not rotate when rotation is disabled',
+      );
 
       print('✓ Multiple sequential refreshes successful');
     });

@@ -878,24 +878,24 @@ Future<dynamic> httpClient({
   Map<String, dynamic>? body,
   String? errorMessage,
   bool auth = false,
-  String? user,
 })
 ```
 
 **Parameters:**
-- `method`: HTTP method ('GET', 'POST', 'PUT', 'DELETE')
+- `method`: HTTP method ('GET', 'POST', 'PATCH')
 - `baseUrl`: Server base URL (e.g., 'http://localhost:3456')
 - `endpoint`: Relative endpoint (e.g., 'api/auth/login')
 - `headers`: Optional additional headers
-- `body`: JSON request body (for POST/PUT)
+- `body`: JSON request body (for POST/PATCH)
 - `errorMessage`: Custom error message
-- `auth`: If `true`, automatically attaches Bearer token
-- `user`: User ID to store/retrieve tokens (required when `auth=true`)
+- `auth`: If `true`, automatically attaches Bearer token and manages refresh (user managed by `SessionManager`)
 
 **Return:**
 - Returns parsed body as `Map<String, dynamic>` or `List` depending on response
 - Throws `Exception` if status code != 2xx
 - Throws `AuthReLoginException` if refresh fails (signal for re-login)
+
+**Note:** For single-user applications, `httpClient` uses `SessionManager` internally to track the authenticated user. Call `SessionManager.setUser(userId)` after successful login.
 
 #### Step 1: Configure TokenVault
 
@@ -941,18 +941,17 @@ void main() {
 
 #### Step 2: Implement AuthService with httpClient
 
-Crea `lib/auth/auth_service.dart`:
+Create `lib/auth/auth_service.dart`:
 
 ```dart
 import 'package:modular_api/modular_api.dart';
 
 class AuthService {
   final String baseUrl;
-  String? _currentUserId;
 
   AuthService({required this.baseUrl});
 
-  /// Login - httpClient automatically captures tokens
+  /// Login - httpClient automatically captures and stores tokens
   Future<LoginResponse> login({
     required String username,
     required String password,
@@ -967,10 +966,7 @@ class AuthService {
           'password': password,
         },
         auth: true,  // Enable automatic token capture
-        user: username,  // Unique user identifier
       ) as Map<String, dynamic>;
-
-      _currentUserId = username;
 
       return LoginResponse(
         accessToken: body['access_token'] as String,
@@ -985,47 +981,45 @@ class AuthService {
     }
   }
 
-  /// Logout - Revoke refresh token on server
+  /// Logout - Revoke refresh token on server and clear local session
   Future<void> logout() async {
-    if (_currentUserId == null) return;
-
     try {
-      await httpClient(
-        method: 'POST',
-        baseUrl: baseUrl,
-        endpoint: 'api/auth/logout',
-        body: {
-          'refresh_token': await TokenVault.readRefresh(_currentUserId!),
-        },
-      );
+      final refreshToken = await TokenVault.readRefresh('current_user');
+      if (refreshToken != null) {
+        await httpClient(
+          method: 'POST',
+          baseUrl: baseUrl,
+          endpoint: 'api/auth/logout',
+          body: {'refresh_token': refreshToken},
+          auth: true,
+        );
+      }
     } catch (e) {
       // Continue even if server fails
     } finally {
-      await TokenVault.deleteRefresh(_currentUserId!);
+      await TokenVault.deleteRefresh('current_user');
       Token.clear();
-      _currentUserId = null;
     }
   }
 
   /// Logout from all sessions
   Future<void> logoutAll() async {
-    if (_currentUserId == null) return;
-
     try {
-      await httpClient(
-        method: 'POST',
-        baseUrl: baseUrl,
-        endpoint: 'api/auth/logout_all',
-        body: {
-          'refresh_token': await TokenVault.readRefresh(_currentUserId!),
-        },
-      );
+      final refreshToken = await TokenVault.readRefresh('current_user');
+      if (refreshToken != null) {
+        await httpClient(
+          method: 'POST',
+          baseUrl: baseUrl,
+          endpoint: 'api/auth/logout_all',
+          body: {'refresh_token': refreshToken},
+          auth: true,
+        );
+      }
     } catch (e) {
       // Continue
     } finally {
-      await TokenVault.deleteRefresh(_currentUserId!);
+      await TokenVault.deleteRefresh('current_user');
       Token.clear();
-      _currentUserId = null;
     }
   }
 
@@ -1035,10 +1029,6 @@ class AuthService {
     required String endpoint,
     Map<String, dynamic>? body,
   }) async {
-    if (_currentUserId == null) {
-      throw AuthException('Not authenticated');
-    }
-
     try {
       return await httpClient(
         method: method,
@@ -1046,18 +1036,20 @@ class AuthService {
         endpoint: endpoint,
         body: body,
         auth: true,  // Attach Bearer token automatically
-        user: _currentUserId!,  // Use current user's token
       );
     } on AuthReLoginException {
-      // Refresh failed, user must login again
-      _currentUserId = null;
-      Token.clear();
-      throw AuthException('Session expired, please login again');
+      throw AuthException('Session expired - please login again');
     }
   }
 
-  bool get isAuthenticated => _currentUserId != null;
-  String? get currentUserId => _currentUserId;
+  /// Check if authenticated (has access token in memory)
+  bool get isAuthenticated => Token.isAuthenticated;
+
+  /// Clear all session data
+  Future<void> clearSession() async {
+    await TokenVault.deleteRefresh('current_user');
+    Token.clear();
+  }
 }
 
 class LoginResponse {
@@ -1077,8 +1069,9 @@ class LoginResponse {
 class AuthException implements Exception {
   final String message;
   AuthException(this.message);
+
   @override
-  String toString() => 'AuthException: $message';
+  String toString() => message;
 }
 ```
 
@@ -1128,6 +1121,7 @@ await authService.logoutAll();
 ✅ **Cleaner code**: No need to handle headers manually  
 ✅ **Auto-refresh**: Automatically retries with refresh token on 401  
 ✅ **Automatic capture**: Login captures and saves tokens without extra code  
+✅ **Single-user optimized**: Uses internal key for token storage - no user management needed  
 ✅ **Error handling**: `AuthReLoginException` signals when re-login is needed  
 ✅ **Type-safe**: Returns parsed JSON directly  
 
@@ -1135,55 +1129,52 @@ await authService.logoutAll();
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ httpClient(auth=true, user='john', ...)                     │
+│ httpClient(auth=true, ...)                                  │
+│ (Single-user design with internal 'current_user' key)      │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
-              Does Token.accessToken exist?
+         Does Token.accessToken exist in memory?
                          │
            ┌─────────────┴─────────────┐
            │ YES                       │ NO
            ▼                           ▼
    Attach Bearer token      Is endpoint /auth/login?
-   in Authorization header            │
-           │                 ┌─────────┴─────────┐
-           │                 │ YES               │ NO
-           ▼                 ▼                   ▼
-   Execute HTTP request   Continue without token   Throw error
-           │                    │
-           │                    ▼
-           │            Execute HTTP request
-           │                    │
-           │              Status 200?
-           │                    │
-           │              ┌─────┴─────┐
-           │              │ YES       │ NO
-           │              ▼           ▼
-           │        Capture tokens   Error
-           │        (access + refresh)
-           │              │
-           │        Saves to:
-           │        • Token.accessToken
-           │        • TokenVault.saveRefresh(user, refresh)
-           │              │
-           └──────────────┴─────────────┐
-                                        │
-                                        ▼
-                                 Status 200?
-                                        │
-                              ┌─────────┴─────────┐
-                              │ YES               │ NO (401)
-                              ▼                   ▼
-                        Return JSON    Has refresh token?
-                                                  │
-                                        ┌─────────┴─────────┐
-                                        │ YES               │ NO
-                                        ▼                   ▼
-                            Try POST /auth/refresh      Throw
-                            with refresh_token     AuthReLoginException
-                                        │
-                                  Refresh OK?
-                                        │
+   in Authorization              │
+           │                ┌────┴────┐
+           │                │ YES     │ NO
+           │                ▼         ▼
+           │          Continue    Continue
+           │                │         │
+           ▼                ▼         ▼
+   Execute HTTP request
+           │
+           ▼
+    Status 200 + /auth/login?
+           │
+      ┌────┴────┐
+      │ YES     │ NO
+      ▼         ▼
+  Capture   Continue
+  tokens      │
+      │       │
+      ▼       │
+  Token.accessToken = access    │
+  TokenVault.saveRefresh('current_user', refresh)
+      │       │
+      └───────┴────────┐
+                       │
+                       ▼
+                Status 200?
+                       │
+            ┌──────────┴──────────┐
+            │ YES                │ NO (401)
+            ▼                    ▼
+        Return JSON      Try POST /auth/refresh
+                         with TokenVault.readRefresh('current_user')
+                                │
+                          Refresh OK?
+                                │
                               ┌─────────┴─────────┐
                               │ YES               │ NO
                               ▼                   ▼

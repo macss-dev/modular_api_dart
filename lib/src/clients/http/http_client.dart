@@ -8,6 +8,9 @@ import 'auth_exceptions.dart';
 import 'token.dart';
 import 'token_vault.dart';
 
+/// Internal constant key for single-user token storage
+const String _kCurrentUser = 'current_user';
+
 /// Attempts to refresh the access token using the stored refresh token.
 ///
 /// Returns true if refresh was successful and Session.accessToken was updated.
@@ -21,9 +24,8 @@ import 'token_vault.dart';
 Future<bool> _tryRefresh({
   required String baseUrl,
   required String refreshEndpoint,
-  required String user,
 }) async {
-  final rt = await TokenVault.readRefresh(user);
+  final rt = await TokenVault.readRefresh(_kCurrentUser);
   if (rt == null) return false;
 
   final url = Uri.parse('$baseUrl/$refreshEndpoint');
@@ -52,7 +54,7 @@ Future<bool> _tryRefresh({
 
       // Update refresh token if rotation is enabled
       if (newRt != null) {
-        await TokenVault.saveRefresh(user, newRt);
+        await TokenVault.saveRefresh(_kCurrentUser, newRt);
       }
 
       return true;
@@ -72,6 +74,9 @@ Future<bool> _tryRefresh({
 /// - Auto-retry with token refresh on 401 responses
 /// - Throws [AuthReLoginException] when refresh fails (signals re-login needed)
 ///
+/// For single-user applications, tokens are managed automatically using an internal key.
+/// No user parameter needed - designed for one authenticated user at a time.
+///
 /// Usage:
 /// ```dart
 /// // Login endpoint (captures tokens automatically)
@@ -81,7 +86,6 @@ Future<bool> _tryRefresh({
 ///   endpoint: 'v0/auth/login',
 ///   body: {'username': 'user', 'password': 'pass'},
 ///   auth: true,
-///   user: 'user123',
 /// );
 ///
 /// // Protected endpoint (auto Bearer token + retry on 401)
@@ -91,7 +95,6 @@ Future<bool> _tryRefresh({
 ///     baseUrl: 'https://api.example.com',
 ///     endpoint: 'v0/users/me',
 ///     auth: true,
-///     user: 'user123',
 ///   );
 /// } on AuthReLoginException {
 ///   // Navigate to login screen
@@ -105,7 +108,6 @@ Future<dynamic> httpClient({
   Map<String, dynamic>? body,
   String errorMessage = 'Error in HTTP request',
   bool auth = false,
-  String? user,
 }) async {
   try {
     final url = Uri.parse('$baseUrl/$endpoint');
@@ -158,36 +160,33 @@ Future<dynamic> httpClient({
       if (expiresIn != null) {
         Token.accessExp = DateTime.now().add(Duration(seconds: expiresIn));
       }
-      if (rt != null && user != null) {
-        await TokenVault.saveRefresh(user, rt);
+      if (rt != null) {
+        await TokenVault.saveRefresh(_kCurrentUser, rt);
       }
       return m; // Return the login response
     }
 
     // Handle 401 on protected endpoints: try refresh and retry once
     if (response.statusCode == 401 && auth) {
-      if (user != null) {
-        // Infer refresh endpoint: if endpoint is 'api/module/...' then use 'api/auth/refresh'
-        // if endpoint is 'v1/resource/...' then use 'v1/auth/refresh', etc.
-        String refreshEndpoint = 'auth/refresh';
-        if (endpoint.contains('/')) {
-          final parts = endpoint.split('/');
-          if (parts.isNotEmpty && parts[0].isNotEmpty) {
-            // Use the first segment as the API prefix
-            refreshEndpoint = '${parts[0]}/auth/refresh';
-          }
+      // Infer refresh endpoint: if endpoint is 'api/module/...' then use 'api/auth/refresh'
+      // if endpoint is 'v1/resource/...' then use 'v1/auth/refresh', etc.
+      String refreshEndpoint = 'auth/refresh';
+      if (endpoint.contains('/')) {
+        final parts = endpoint.split('/');
+        if (parts.isNotEmpty && parts[0].isNotEmpty) {
+          // Use the first segment as the API prefix
+          refreshEndpoint = '${parts[0]}/auth/refresh';
         }
+      }
 
-        final refreshed = await _tryRefresh(
-          baseUrl: baseUrl,
-          refreshEndpoint: refreshEndpoint,
-          user: user,
-        );
-        if (refreshed) {
-          // Update Authorization header with new token and retry
-          effectiveHeaders['Authorization'] = 'Bearer ${Token.accessToken}';
-          response = await doCall();
-        }
+      final refreshed = await _tryRefresh(
+        baseUrl: baseUrl,
+        refreshEndpoint: refreshEndpoint,
+      );
+      if (refreshed) {
+        // Update Authorization header with new token and retry
+        effectiveHeaders['Authorization'] = 'Bearer ${Token.accessToken}';
+        response = await doCall();
       }
     }
 

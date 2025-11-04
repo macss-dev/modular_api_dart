@@ -1,17 +1,14 @@
-## Framework Overview
+# modular_api - AI Agent Guide
 
-`modular_api` is a Dart/Flutter framework for building use-case-centric REST APIs on top of Shelf. It follows a clean architecture pattern where business logic is separated from HTTP concerns.
-
-**Core Concepts:**
-1. **UseCase** — A class encapsulating a single business operation
-2. **Input** — DTO representing request data
-3. **Output** — DTO representing response data
-4. **Module** — Logical grouping of related use cases
-5. **ModularApi** — Main class that orchestrates routing and middleware
+Quick reference guide for AI assistants working with `modular_api` framework.
 
 ---
 
-## Quick Architecture Summary
+## Framework Overview
+
+`modular_api` is a Dart/Flutter framework for building **use-case-centric REST APIs** on top of Shelf following clean architecture.
+
+### Core Architecture
 
 ```
 HTTP Request → ModularApi → Module → UseCase → Business Logic → Output → HTTP Response
@@ -19,69 +16,92 @@ HTTP Request → ModularApi → Module → UseCase → Business Logic → Output
                              Input DTO (validated)
 ```
 
-**Key Points for AI Agents:**
-- Every endpoint is a UseCase
-- UseCases receive Input DTOs and return Output DTOs
+**Key Components:**
+- **UseCase** — Single business operation (pure logic, no HTTP concerns)
+- **Input** — Request DTO with validation
+- **Output** — Response DTO
+- **Module** — Logical grouping of related use cases
+- **ModularApi** — Main orchestrator for routing and middleware
+
+**Default Behavior:**
 - All endpoints are POST by default
-- Automatic OpenAPI/Swagger documentation generation
+- Automatic OpenAPI/Swagger documentation at `/docs`
+- Automatic health check at `GET /health`
 - Built-in middlewares: CORS, API Key authentication
-- Automatic health endpoint at `/health`
 
 ---
 
-## When to Use This Framework
+## When to Use
 
-Use `modular_api` when users need to:
-- Build REST APIs in Dart/Flutter
-- Implement clean architecture with use cases
-- Generate automatic API documentation (OpenAPI/Swagger)
-- Have testable, modular server code
-- Separate business logic from HTTP concerns
+✅ **Use `modular_api` for:**
+- REST APIs in Dart/Flutter
+- Clean architecture with use cases
+- Automatic API documentation
+- Testable, modular server code
+- Separation of business logic from HTTP
 
-**Do NOT use** for:
-- GraphQL APIs (use different framework)
+❌ **Don't use for:**
+- GraphQL APIs
 - WebSocket-only servers
 - Simple static file servers
 - Frontend applications
 
 ---
 
-## Implementation Workflow
+## Quick Implementation Guide
 
-When a user asks to create an API or use case, follow this sequence:
+### 1. Create DTOs
 
-### Step 1: Create Input and Output DTOs
-**Reference:** [USECASE_DTO_GUIDE.md](./USECASE_DTO_GUIDE.md)
+Every endpoint needs Input and Output DTOs.
 
-Each DTO must:
+**Requirements:**
 - Extend `Input` or `Output` base class
-- Have all properties as `final`
+- All properties must be `final`
 - Implement `fromJson` factory constructor
 - Override `toJson()` method
-- Override `toSchema()` method for OpenAPI documentation
+- Override `toSchema()` method for OpenAPI docs
 
-**Critical:** The `toSchema()` method must accurately represent all class properties using OpenAPI specification types.
+**📖 Detailed Guide:** [doc/usecase_dto_guide.md](doc/usecase_dto_guide.md)
 
-**Type Mapping (Dart → OpenAPI):**
-- `int` → `{'type': 'integer'}`
-- `double` → `{'type': 'number', 'format': 'double'}`
-- `String` → `{'type': 'string'}`
-- `bool` → `{'type': 'boolean'}`
-- `DateTime` → `{'type': 'string', 'format': 'date-time'}`
-- `List<T>` → `{'type': 'array', 'items': {...}}`
-- Custom object → `{'type': 'object', 'properties': {...}}`
+**Example:**
+```dart
+class MyInput extends Input {
+  final String name;
+  
+  MyInput({required this.name});
+  
+  factory MyInput.fromJson(Map<String, dynamic> json) {
+    return MyInput(name: json['name'] as String);
+  }
+  
+  @override
+  Map<String, dynamic> toJson() => {'name': name};
+  
+  @override
+  Map<String, dynamic> toSchema() {
+    return {
+      'type': 'object',
+      'properties': {
+        'name': {'type': 'string', 'description': 'User name'},
+      },
+      'required': ['name'],
+    };
+  }
+}
+```
 
-### Step 2: Implement the UseCase
-**Reference:** [USECASE_IMPLEMENTATION_GUIDE.md](./USECASE_IMPLEMENTATION_GUIDE.md)
+### 2. Implement UseCase
 
-Each UseCase must:
+**Requirements:**
 - Extend `UseCase<InputType, OutputType>`
 - Call `super(input)` in constructor
 - Implement static `fromJson(Map<String, dynamic> json)` factory
 - Override `execute()` method returning `Future<OutputType>`
 - Keep business logic pure (no HTTP concerns)
 
-**Structure:**
+**📖 Detailed Guide:** [doc/usecase_implementation.md](doc/usecase_implementation.md)
+
+**Example:**
 ```dart
 class MyUseCase extends UseCase<MyInput, MyOutput> {
   MyUseCase(super.input);
@@ -93,40 +113,131 @@ class MyUseCase extends UseCase<MyInput, MyOutput> {
   @override
   Future<MyOutput> execute() async {
     // Business logic here
-    return MyOutput(/* data */);
+    return MyOutput(message: 'Hello, ${input.name}!');
   }
 }
 ```
 
-### Step 3: Create Module Builder
+### 3. Create Module Builder
 
-Create a builder function that encapsulates all use cases for a module:
+Encapsulate related use cases in a builder function:
 
 ```dart
 void buildMyModule(ModuleBuilder m) {
   m.usecase('usecase-name', MyUseCase.fromJson);
   m.usecase('another-usecase', AnotherUseCase.fromJson);
-  // Add more use cases as needed
 }
 ```
 
-### Step 4: Register Modules in ModularApi
+### 4. Register Modules
 
 ```dart
 final api = ModularApi(basePath: '/api');
 
-// Register modules using their builders
 api.module('module1', buildModule1);
-api.module('module2', buildModule2);
 api.module('users', buildUsersModule);
 
 await api.serve(port: 8080);
 ```
 
-This creates endpoints like:
+**This creates endpoints like:**
 - `POST /api/module1/usecase-name`
-- `POST /api/module2/usecase-name`
 - `POST /api/users/create`
+
+---
+
+## Type Mapping for OpenAPI Schemas
+
+When implementing `toSchema()`, use these mappings:
+
+| Dart Type | OpenAPI Schema |
+|-----------|----------------|
+| `int` | `{'type': 'integer'}` |
+| `double` | `{'type': 'number', 'format': 'double'}` |
+| `String` | `{'type': 'string'}` |
+| `bool` | `{'type': 'boolean'}` |
+| `DateTime` | `{'type': 'string', 'format': 'date-time'}` |
+| `List<T>` | `{'type': 'array', 'items': {...}}` |
+| Custom class | `{'type': 'object', 'properties': {...}}` |
+
+---
+
+## Authentication & HTTP Client (v0.0.7+)
+
+### Single-User Design
+
+The framework is optimized for **single-user applications** (one user at a time).
+
+**Key Features:**
+- `httpClient()` — Intelligent HTTP client with auto-authentication
+- `Token` — In-memory session management
+- `TokenVault` — Persistent storage for refresh tokens
+- `JwtHelper` — JWT generation and validation
+- `PasswordHasher` — bcrypt password hashing
+- `TokenHasher` — SHA-256 token hashing
+
+**📖 Complete Guide:** [doc/http_client_guide.md](doc/http_client_guide.md)
+
+**📖 Auth Implementation:** [doc/auth_implementation_guide.md](doc/auth_implementation_guide.md)
+
+### Quick httpClient Usage
+
+```dart
+// Login - auto-captures tokens
+await httpClient(
+  method: 'POST',
+  baseUrl: 'https://api.example.com',
+  endpoint: 'api/auth/login',
+  body: {'username': 'user', 'password': 'pass'},
+  auth: true,
+);
+
+// Protected request - auto-attaches Bearer token, auto-refreshes on 401
+try {
+  final data = await httpClient(
+    method: 'GET',
+    baseUrl: 'https://api.example.com',
+    endpoint: 'api/users/profile',
+    auth: true,
+  );
+} on AuthReLoginException {
+  // Session expired - redirect to login
+}
+
+// Logout
+Token.clear();
+await TokenVault.deleteRefresh();
+```
+
+**Important:** No `user` parameter needed in v0.0.7+ (single-user optimized).
+
+---
+
+## Testing
+
+Use `useCaseTestHandler` for unit testing without HTTP server:
+
+**📖 Complete Guide:** [doc/testing_guide.md](doc/testing_guide.md)
+
+**Example:**
+```dart
+import 'package:modular_api/modular_api.dart';
+import 'package:test/test.dart';
+import 'dart:convert';
+
+void main() {
+  test('MyUseCase should return expected output', () async {
+    final input = {'name': 'World'};
+    final handler = useCaseTestHandler(MyUseCase.fromJson);
+    
+    final response = await handler(input);
+    
+    expect(response.statusCode, equals(200));
+    final body = jsonDecode(await response.readAsString());
+    expect(body['message'], equals('Hello, World!'));
+  });
+}
+```
 
 ---
 
@@ -228,44 +339,51 @@ This creates endpoints like:
 
 ---
 
-## Environment Variables (Env class)
+## Middlewares
 
-The framework provides `Env` utility for environment variables:
+```dart
+final api = ModularApi(basePath: '/api')
+  .use(cors())        // Enable CORS
+  .use(apiKey());     // API Key authentication (reads from API_KEY env var)
+```
 
-**Behavior (v0.0.4+):**
-1. If `.env` file exists → read from it
-2. If `.env` not found → fallback to `Platform.environment`
-3. If key not found in either → throw `EnvKeyNotFoundException`
+---
 
-**Methods:**
-- `Env.getString(key)` — Get string value (removes quotes if present)
-- `Env.getInt(key)` — Get integer value (throws `EnvParseException` if invalid)
-- `Env.init()` — Initialize and load .env file (optional, called automatically)
+## Environment Variables
 
-**Usage Example:**
+Use `Env` utility for environment variables:
+
 ```dart
 final apiKey = Env.getString('API_KEY');
 final port = Env.getInt('PORT');
 ```
 
----
-
-## Automatic Features
-
-When helping users, inform them about these automatic features:
-
-1. **Health Endpoint** — `GET /health` responds with `ok` (no registration needed)
-2. **OpenAPI Documentation** — Auto-generated from DTOs' `toSchema()` methods
-3. **Swagger UI** — Available at `/docs` endpoint
-4. **Error Handling** — Exceptions automatically converted to HTTP 500 responses
-5. **JSON Parsing** — Automatic for Input DTOs via `fromJson`
-6. **JSON Serialization** — Automatic for Output DTOs via `toJson`
+**Behavior (v0.0.4+):**
+1. If `.env` file exists → read from it
+2. If `.env` not found → fallback to `Platform.environment`
+3. If key not found → throws `EnvKeyNotFoundException`
 
 ---
 
-## File Organization Recommendations
+## Database Support
 
-Suggest this structure for larger projects:
+Built-in ODBC client for SQL Server and Oracle:
+
+```dart
+import 'package:modular_api/modular_api.dart';
+
+final db = createSqlServerClient();
+try {
+  final rows = await db.execute('SELECT * FROM users');
+  print(rows);
+} finally {
+  await db.disconnect();
+}
+```
+
+---
+
+## Project Structure Recommendation
 
 ```
 lib/
@@ -276,78 +394,18 @@ lib/
         usecase_2.dart
       repositories/
         repository.dart
-      module1_builder.dart      # Builder function for module1
+      module1_builder.dart      # Builder function
     module2/
       usecases/
         usecase_3.dart
-        usecase_4.dart
-      module2_builder.dart      # Builder function for module2
+      module2_builder.dart
   db/
     db_client.dart
 bin/
-  main.dart                     # Imports all module builders
+  main.dart                     # Imports all builders
 test/
   module1/
     usecase_1_test.dart
-```
-
-**Module Builder Pattern:**
-
-Each module should have its own builder file (e.g., `module1_builder.dart`):
-
-```dart
-import 'package:modular_api/modular_api.dart';
-import 'usecases/usecase_1.dart';
-import 'usecases/usecase_2.dart';
-
-void buildModule1(ModuleBuilder m) {
-  m.usecase('usecase-1', UseCase1.fromJson);
-  m.usecase('usecase-2', UseCase2.fromJson);
-}
-```
-
-Then in `main.dart`:
-
-```dart
-import 'package:modular_api/modular_api.dart';
-import 'lib/modules/module1/module1_builder.dart';
-import 'lib/modules/module2/module2_builder.dart';
-
-Future<void> main() async {
-  final api = ModularApi(basePath: '/api');
-  
-  api.module('module1', buildModule1);
-  api.module('module2', buildModule2);
-  
-  await api.serve(port: 8080);
-}
-```
-
----
-
-## Testing Pattern
-
-Always suggest this testing pattern using `useCaseTestHandler`:
-
-```dart
-import 'package:modular_api/modular_api.dart';
-import 'package:test/test.dart';
-import 'dart:convert';
-
-void main() {
-  group('MyUseCase', () {
-    test('should return expected output', () async {
-      final input = {'field': 'value'};
-      final handler = useCaseTestHandler(MyUseCase.fromJson);
-      
-      final response = await handler(input);
-      
-      expect(response.statusCode, equals(200));
-      final body = jsonDecode(await response.readAsString());
-      expect(body['result'], equals('expected'));
-    });
-  });
-}
 ```
 
 ---
@@ -545,49 +603,69 @@ dart compile exe bin/main.dart -o build/server
 
 ---
 
-## Additional Resources
+## Documentation Index
 
-- [USECASE_DTO_GUIDE.md](./USECASE_DTO_GUIDE.md) — Comprehensive guide for creating Input/Output DTOs
-- [USECASE_IMPLEMENTATION_GUIDE.md](./USECASE_IMPLEMENTATION_GUIDE.md) — Complete guide for implementing UseCases
-- [README.md](./README.md) — User-facing documentation with installation and quick start
+**📚 Complete Documentation:** [doc/INDEX.md](doc/INDEX.md)
+
+**Essential Guides:**
+- **[doc/usecase_dto_guide.md](doc/usecase_dto_guide.md)** — Creating Input/Output DTOs
+- **[doc/usecase_implementation.md](doc/usecase_implementation.md)** — Implementing UseCases
+- **[doc/testing_guide.md](doc/testing_guide.md)** — Testing with useCaseTestHandler
+- **[doc/http_client_guide.md](doc/http_client_guide.md)** — Using httpClient (Flutter & Dart)
+- **[doc/authentication_guide.md](doc/authentication_guide.md)** — Token management basics
+- **[doc/auth_implementation_guide.md](doc/auth_implementation_guide.md)** — Complete JWT auth system
+
+**Additional Resources:**
 - `template/` folder — Full example project with multiple modules
 - `example/` folder — Minimal runnable example
 
 ---
 
-## Version-Specific Features
+## Installation
 
-### v0.0.4+ (current)
-- Env fallback to Platform.environment when .env is missing
-- EnvKeyNotFoundException thrown when key not found
+```yaml
+# pubspec.yaml
+dependencies:
+  modular_api: ^0.0.7
+```
 
-### v0.0.3+
-- Automatic GET /health endpoint
-
-### v0.0.2+
-- Automatic OpenAPI initialization
-- Renamed middlewares
-
-### v0.0.1
-- Initial release with core features
+Or:
+```bash
+dart pub add modular_api
+```
 
 ---
 
-## AI Agent Guidelines Summary
+## Quick Commands
 
-When assisting users with `modular_api`:
+```bash
+# Run server
+dart run bin/main.dart
+
+# Run tests
+dart test
+
+# Compile to executable
+dart compile exe bin/main.dart -o build/server
+```
+
+---
+
+## AI Agent Best Practices
+
+When assisting users:
 
 1. ✅ **Always generate complete code** — Include all three DTO methods, full UseCase, and registration
-2. ✅ **Reference the guides** — Point users to USECASE_DTO_GUIDE.md and USECASE_IMPLEMENTATION_GUIDE.md for detailed explanations
-3. ✅ **Follow the pattern** — Input → UseCase → Output, no HTTP concerns in business logic
+2. ✅ **Reference the detailed guides** — Point to specific documentation files
+3. ✅ **Follow the pattern** — Input → UseCase → Output (no HTTP in business logic)
 4. ✅ **Include tests** — Show useCaseTestHandler examples
-5. ✅ **Suggest file organization** — Especially for projects with multiple modules
-6. ✅ **Explain automatic features** — Health endpoint, OpenAPI docs, error handling
-7. ✅ **Validate schemas match DTOs** — Ensure toSchema() accurately represents class properties
-8. ✅ **Use dependency injection** — Never create dependencies inside execute()
-9. ✅ **Provide curl examples** — Help users test their endpoints immediately
-10. ✅ **Keep it simple** — Start with minimal examples, add complexity only when needed
+5. ✅ **Suggest file organization** — Especially for multi-module projects
+6. ✅ **Explain automatic features** — Health endpoint, docs, error handling
+7. ✅ **Validate schemas** — Ensure toSchema() matches class properties
+8. ✅ **Use dependency injection** — Never create deps inside execute()
+9. ✅ **Provide curl examples** — Help users test immediately
+10. ✅ **Keep it simple** — Start minimal, add complexity only when needed
 
 ---
 
-**This framework prioritizes clean architecture, testability, and separation of concerns. Always guide users toward these principles when generating code.**
+**This framework prioritizes clean architecture, testability, and separation of concerns.**

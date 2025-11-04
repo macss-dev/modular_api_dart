@@ -26,7 +26,7 @@ Complete guide for using `httpClient` function in both Flutter and pure Dart app
 
 ## Overview
 
-`httpClient` is a smart HTTP client that automatically handles authentication, token management, and token refresh for REST APIs. It eliminates the need to manually manage Bearer tokens and refresh logic.
+`httpClient` is a smart HTTP client designed for **single-user applications** that automatically handles authentication, token management, and token refresh for REST APIs. It eliminates the need to manually manage Bearer tokens and refresh logic.
 
 **What it does automatically:**
 - Attaches Bearer tokens to authenticated requests
@@ -34,6 +34,12 @@ Complete guide for using `httpClient` function in both Flutter and pure Dart app
 - Detects 401 errors and attempts to refresh the access token
 - Retries the original request with the new token
 - Throws `AuthReLoginException` when refresh fails (signals re-login needed)
+
+**Single-User Design (v0.0.7+):**
+- Optimized for single-user applications (one user at a time)
+- No need to pass user identifiers
+- Simplified API surface
+- Internal management of token storage keys
 
 ---
 
@@ -47,6 +53,7 @@ Complete guide for using `httpClient` function in both Flutter and pure Dart app
 | **Token Storage** | Securely stores refresh tokens using configurable adapters |
 | **Re-login Signal** | Throws `AuthReLoginException` when user must log in again |
 | **Cross-platform** | Works in Flutter (iOS/Android/Web/Desktop) and pure Dart (CLI/Server) |
+| **Single-User Optimized** | Designed for single-user apps - no user identifiers needed |
 
 ---
 
@@ -63,8 +70,7 @@ final loginData = await httpClient(
   baseUrl: 'https://api.example.com',
   endpoint: 'api/auth/login',
   body: {'username': 'user', 'password': 'pass'},
-  auth: true,
-  user: 'user123',
+  auth: true,  // Enable token auto-capture
 );
 
 // Protected endpoint - auto token + auto refresh
@@ -73,8 +79,7 @@ try {
     method: 'GET',
     baseUrl: 'https://api.example.com',
     endpoint: 'api/users/profile',
-    auth: true,
-    user: 'user123',
+    auth: true,  // Auto-attaches Bearer token
   );
   print('User data: $data');
 } on AuthReLoginException {
@@ -212,8 +217,7 @@ try {
       'username': 'john.doe',
       'password': 'secure_password_123',
     },
-    auth: true,  // Enable auth features
-    user: 'john.doe',  // User identifier for token storage
+    auth: true,  // Enable auth features - auto-captures tokens
   );
   
   print('Login successful!');
@@ -233,7 +237,7 @@ try {
 1. Makes POST request to login endpoint
 2. On success (200), extracts `access_token`, `refresh_token`, and `expires_in`
 3. Stores `access_token` in memory (`Token.accessToken`)
-4. Stores `refresh_token` securely via `TokenVault.saveRefresh(user, token)`
+4. Stores `refresh_token` securely via `TokenVault` (using internal key)
 5. Returns the full response body
 
 ### Protected Endpoints
@@ -247,8 +251,7 @@ try {
     method: 'GET',
     baseUrl: 'https://api.example.com',
     endpoint: 'api/users/profile',
-    auth: true,
-    user: 'john.doe',
+    auth: true,  // Auto-attaches Bearer token
   );
   print('User name: ${profile['name']}');
   
@@ -258,8 +261,7 @@ try {
     baseUrl: 'https://api.example.com',
     endpoint: 'api/users/update',
     body: {'name': 'John Updated'},
-    auth: true,
-    user: 'john.doe',
+    auth: true,  // Auto-attaches Bearer token
   );
   print('Update result: $result');
   
@@ -289,21 +291,22 @@ Logout revokes the refresh token on the server and clears local session.
 
 ```dart
 try {
+  // Get refresh token for logout
+  final refreshToken = await TokenVault.readRefresh();
+  
   // Call logout endpoint
   final response = await httpClient(
     method: 'POST',
     baseUrl: 'https://api.example.com',
     endpoint: 'api/auth/logout',
-    body: {
-      'refresh_token': await TokenVault.readRefresh('john.doe'),
-    },
+    body: {'refresh_token': refreshToken},
   );
   
   print('Logout successful: ${response['message']}');
   
   // Clear local session
   Token.clear();  // Clears access token from memory
-  await TokenVault.deleteRefresh('john.doe');  // Removes refresh token
+  await TokenVault.deleteRefresh();  // Removes refresh token
   
   // Navigate to login screen
   
@@ -311,14 +314,14 @@ try {
   print('Logout failed: $e');
   // Still clear local tokens even if server call fails
   Token.clear();
-  await TokenVault.deleteRefresh('john.doe');
+  await TokenVault.deleteRefresh();
 }
 ```
 
 **Logout all sessions:**
 
 ```dart
-final refreshToken = await TokenVault.readRefresh('john.doe');
+final refreshToken = await TokenVault.readRefresh();
 
 final response = await httpClient(
   method: 'POST',
@@ -331,7 +334,7 @@ print('Revoked ${response['revoked_count']} sessions');
 
 // Clear local session
 Token.clear();
-await TokenVault.deleteRefresh('john.doe');
+await TokenVault.deleteRefresh();
 ```
 
 ### Error Handling
@@ -345,7 +348,6 @@ try {
     baseUrl: 'https://api.example.com',
     endpoint: 'api/data',
     auth: true,
-    user: 'john.doe',
   );
   
   // Success - process data
@@ -355,7 +357,7 @@ try {
   // Session expired, refresh failed
   // Clear session and navigate to login
   Token.clear();
-  await TokenVault.deleteRefresh('john.doe');
+  await TokenVault.deleteRefresh();
   navigateToLogin();
   
 } catch (e) {
@@ -386,7 +388,6 @@ import 'package:modular_api/modular_api.dart';
 
 class ApiService {
   static const String baseUrl = 'https://api.example.com';
-  String? _currentUser;
   
   // Login
   Future<bool> login(String username, String password) async {
@@ -396,11 +397,9 @@ class ApiService {
         baseUrl: baseUrl,
         endpoint: 'api/auth/login',
         body: {'username': username, 'password': password},
-        auth: true,
-        user: username,
+        auth: true,  // Auto-captures tokens
       );
       
-      _currentUser = username;
       return true;
     } catch (e) {
       print('Login error: $e');
@@ -410,15 +409,12 @@ class ApiService {
   
   // Get user profile
   Future<Map<String, dynamic>> getProfile() async {
-    if (_currentUser == null) throw Exception('Not logged in');
-    
     try {
       final profile = await httpClient(
         method: 'GET',
         baseUrl: baseUrl,
         endpoint: 'api/users/profile',
-        auth: true,
-        user: _currentUser!,
+        auth: true,  // Auto-attaches Bearer token
       );
       return profile as Map<String, dynamic>;
     } on AuthReLoginException {
@@ -429,8 +425,6 @@ class ApiService {
   
   // Update profile
   Future<void> updateProfile(Map<String, dynamic> data) async {
-    if (_currentUser == null) throw Exception('Not logged in');
-    
     try {
       await httpClient(
         method: 'PATCH',
@@ -438,7 +432,6 @@ class ApiService {
         endpoint: 'api/users/profile',
         body: data,
         auth: true,
-        user: _currentUser!,
       );
     } on AuthReLoginException {
       await logout();
@@ -448,10 +441,8 @@ class ApiService {
   
   // Logout
   Future<void> logout() async {
-    if (_currentUser == null) return;
-    
     try {
-      final refreshToken = await TokenVault.readRefresh(_currentUser!);
+      final refreshToken = await TokenVault.readRefresh();
       if (refreshToken != null) {
         await httpClient(
           method: 'POST',
@@ -465,15 +456,12 @@ class ApiService {
     } finally {
       // Always clear local session
       Token.clear();
-      if (_currentUser != null) {
-        await TokenVault.deleteRefresh(_currentUser!);
-      }
-      _currentUser = null;
+      await TokenVault.deleteRefresh();
     }
   }
   
   // Check if logged in
-  bool get isLoggedIn => _currentUser != null && Token.isAuthenticated;
+  bool get isLoggedIn => Token.isAuthenticated;
 }
 ```
 
@@ -645,26 +633,19 @@ Future<void> handleLogin() async {
     baseUrl: baseUrl,
     endpoint: 'api/auth/login',
     body: {'username': username, 'password': password},
-    auth: true,
-    user: username,
+    auth: true,  // Auto-captures tokens
   );
 
   print('✅ Login successful!');
   print('   Token expires in: ${response['expires_in']} seconds');
-  
-  // Save username for future commands
-  await File('.current_user').writeAsString(username);
 }
 
 Future<void> handleProfile() async {
-  final username = await _getCurrentUser();
-  
   final profile = await httpClient(
     method: 'GET',
     baseUrl: baseUrl,
     endpoint: 'api/users/profile',
-    auth: true,
-    user: username,
+    auth: true,  // Auto-attaches Bearer token
   );
 
   print('📋 Profile:');
@@ -674,8 +655,7 @@ Future<void> handleProfile() async {
 }
 
 Future<void> handleLogout() async {
-  final username = await _getCurrentUser();
-  final refreshToken = await TokenVault.readRefresh(username);
+  final refreshToken = await TokenVault.readRefresh();
 
   if (refreshToken != null) {
     await httpClient(
@@ -687,18 +667,9 @@ Future<void> handleLogout() async {
   }
 
   Token.clear();
-  await TokenVault.deleteRefresh(username);
-  await File('.current_user').delete();
+  await TokenVault.deleteRefresh();
 
   print('✅ Logged out successfully');
-}
-
-Future<String> _getCurrentUser() async {
-  final file = File('.current_user');
-  if (!await file.exists()) {
-    throw Exception('Not logged in. Run: dart run bin/cli_app.dart login');
-  }
-  return await file.readAsString();
 }
 ```
 
@@ -733,7 +704,6 @@ Future<dynamic> httpClient({
   Map<String, dynamic>? body,    // Request body for POST/PATCH (optional)
   String errorMessage = 'Error in HTTP request',  // Custom error message
   bool auth = false,             // Enable authentication features
-  String? user,                  // User identifier for token storage
 })
 ```
 
@@ -748,7 +718,6 @@ Future<dynamic> httpClient({
 | `body` | `Map<String, dynamic>?` | No | Request body (auto-encoded as JSON) |
 | `errorMessage` | `String` | No | Custom error message prefix |
 | `auth` | `bool` | No | Enable auth features (default: `false`) |
-| `user` | `String?` | No | User ID for token storage (required if `auth: true`) |
 
 **Returns:** `Future<dynamic>`
 - Success: Parsed JSON response as `Map` or `List`
@@ -780,10 +749,10 @@ Secure refresh token storage.
 ```dart
 class TokenVault {
   static void configure(TokenStorageAdapter adapter);
-  static Future<void> saveRefresh(String userId, String token);
-  static Future<String?> readRefresh(String userId);
-  static Future<void> deleteRefresh(String userId);
-  static Future<void> deleteAll();
+  static Future<void> saveRefresh(String token);      // Save refresh token (no userId needed)
+  static Future<String?> readRefresh();               // Read refresh token
+  static Future<void> deleteRefresh();                // Delete refresh token
+  static Future<void> deleteAll();                    // Delete all tokens
 }
 ```
 
@@ -817,17 +786,19 @@ void main() {
 }
 ```
 
-### 2. Use Consistent User Identifiers
+### 2. Single-User Architecture
+
+The framework is optimized for single-user applications where only one user can be logged in at a time.
 
 ```dart
-// ✅ Good: Same user ID for all requests
-final username = 'john.doe';
-await httpClient(..., auth: true, user: username);
-await httpClient(..., auth: true, user: username);
+// ✅ Good: Simple single-user flow
+await httpClient(..., auth: true);  // Login
+await httpClient(..., auth: true);  // Protected request
+Token.clear();                       // Logout
+await TokenVault.deleteRefresh();
 
-// ❌ Bad: Different identifiers for same user
-await httpClient(..., auth: true, user: 'john.doe');
-await httpClient(..., auth: true, user: 'john@example.com');
+// ⚠️ Note: For multi-user apps (multiple simultaneous users),
+// you'll need to implement custom user session management
 ```
 
 ### 3. Always Handle AuthReLoginException
@@ -835,11 +806,11 @@ await httpClient(..., auth: true, user: 'john@example.com');
 ```dart
 // ✅ Good: Catch and handle re-login
 try {
-  await httpClient(..., auth: true, user: user);
+  await httpClient(..., auth: true);
 } on AuthReLoginException {
   // Clear session and navigate to login
   Token.clear();
-  await TokenVault.deleteRefresh(user);
+  await TokenVault.deleteRefresh();
   navigateToLogin();
 } catch (e) {
   showError(e.toString());
@@ -847,7 +818,7 @@ try {
 
 // ❌ Bad: Generic catch misses re-login signal
 try {
-  await httpClient(..., auth: true, user: user);
+  await httpClient(..., auth: true);
 } catch (e) {
   showError(e.toString());
 }
@@ -864,7 +835,7 @@ Future<void> logout() async {
   } finally {
     // Always clear local session
     Token.clear();
-    await TokenVault.deleteRefresh(currentUser);
+    await TokenVault.deleteRefresh();
   }
 }
 
@@ -920,7 +891,7 @@ Future<dynamic> longOperation() async {
 try {
   await httpClient(...);
 } on AuthReLoginException catch (e) {
-  logger.info('Session expired for user $user');
+  logger.info('Session expired, user needs to log in');
   handleReLogin();
 } catch (e, stackTrace) {
   logger.error('HTTP request failed', error: e, stackTrace: stackTrace);
@@ -938,19 +909,19 @@ try {
 
 **Solution:**
 1. Ensure user logged in successfully before making protected requests
-2. Check that `user` parameter matches between login and protected requests
-3. Verify TokenVault is configured correctly
+2. Verify TokenVault is configured correctly
+3. Check that login response contains valid tokens
 
 ```dart
 // Debug: Check token storage
-final refreshToken = await TokenVault.readRefresh(user);
+final refreshToken = await TokenVault.readRefresh();
 print('Refresh token exists: ${refreshToken != null}');
 print('Access token exists: ${Token.accessToken != null}');
 ```
 
 ### Issue: "Token not being attached to requests"
 
-**Cause:** Missing `auth: true` or `user` parameter.
+**Cause:** Missing `auth: true` parameter.
 
 **Solution:**
 ```dart
@@ -959,8 +930,7 @@ await httpClient(
   method: 'GET',
   baseUrl: baseUrl,
   endpoint: 'api/protected',
-  auth: true,        // Enable auth
-  user: 'john.doe',  // Provide user ID
+  auth: true,  // Enable auth
 );
 
 // ❌ Wrong: Missing auth parameter
@@ -968,7 +938,7 @@ await httpClient(
   method: 'GET',
   baseUrl: baseUrl,
   endpoint: 'api/protected',
-  user: 'john.doe',  // Auth is false by default
+  // Auth is false by default
 );
 ```
 
@@ -995,7 +965,6 @@ await httpClient(
   endpoint: 'api/auth/refresh',
   body: {'refresh_token': refreshToken},
   auth: true,  // Don't do this!
-  user: user,
 );
 ```
 
@@ -1063,27 +1032,24 @@ final data = await retryRequest(() => httpClient(...));
 
 ### Issue: "Mixed user sessions"
 
-**Cause:** Multiple users on same device with conflicting tokens.
+**Note:** The framework is designed for single-user applications (v0.0.7+). If you need multi-user support (multiple users logged in simultaneously), you'll need to implement custom session management.
 
-**Solution:** Use unique user identifiers and clear on logout:
+For single-user apps, ensure proper logout:
 
 ```dart
-class AuthManager {
-  String? _currentUser;
+Future<void> switchUser(String newUsername, String newPassword) async {
+  // First, logout current user
+  Token.clear();
+  await TokenVault.deleteRefresh();
   
-  Future<void> switchUser(String newUser) async {
-    // Clear old session
-    if (_currentUser != null) {
-      Token.clear();
-      await TokenVault.deleteRefresh(_currentUser!);
-    }
-    _currentUser = newUser;
-  }
-  
-  Future<void> login(String username, String password) async {
-    await switchUser(username);
-    await httpClient(..., user: username);
-  }
+  // Then login new user
+  await httpClient(
+    method: 'POST',
+    baseUrl: baseUrl,
+    endpoint: 'api/auth/login',
+    body: {'username': newUsername, 'password': newPassword},
+    auth: true,
+  );
 }
 ```
 
@@ -1091,15 +1057,16 @@ class AuthManager {
 
 ## Summary
 
-`httpClient` simplifies HTTP requests with authentication:
+`httpClient` simplifies HTTP requests with authentication for single-user applications:
 
 **Key Points:**
 - Configure `TokenVault` once at app startup
-- Use `auth: true` + `user` parameter for authenticated requests
+- Use `auth: true` for authenticated requests (no user parameter needed)
 - Login automatically captures and stores tokens
 - 401 errors trigger automatic token refresh and retry
 - Catch `AuthReLoginException` to detect when re-login is needed
 - Always clear both `Token` and `TokenVault` on logout
+- Optimized for single-user applications (one user at a time)
 
 **Common Pattern:**
 ```dart
@@ -1107,18 +1074,18 @@ class AuthManager {
 TokenVault.configure(YourAdapter());
 
 // 2. Login
-await httpClient(..., endpoint: 'auth/login', auth: true, user: userId);
+await httpClient(..., endpoint: 'auth/login', auth: true);
 
 // 3. Make protected requests (auto token + auto refresh)
 try {
-  await httpClient(..., auth: true, user: userId);
+  await httpClient(..., auth: true);
 } on AuthReLoginException {
   // Navigate to login
 }
 
 // 4. Logout
 Token.clear();
-await TokenVault.deleteRefresh(userId);
+await TokenVault.deleteRefresh();
 ```
 
 For more examples, see:
