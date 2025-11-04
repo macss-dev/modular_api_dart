@@ -16,6 +16,15 @@ export 'src/middlewares/apikey.dart' show exampleApiKeyMiddleware;
 
 // Clients
 export 'src/clients/http/http_client.dart' show httpClient;
+export 'src/clients/http/token.dart' show Token;
+export 'src/clients/http/token_vault.dart' show TokenVault;
+export 'src/clients/http/auth_exceptions.dart' show AuthReLoginException;
+export 'src/clients/http/storage/token_storage_adapter.dart'
+    show TokenStorageAdapter, TokenStorageException;
+export 'src/clients/http/storage/memory_storage_adapter.dart'
+    show MemoryStorageAdapter;
+export 'src/clients/http/storage/file_storage_adapter.dart'
+    show FileStorageAdapter, AesGcmEncryptor, TokenEncryptor, PassphraseProvider;
 export 'src/clients/db/db_client.dart' show DbClient;
 
 // OpenAPI
