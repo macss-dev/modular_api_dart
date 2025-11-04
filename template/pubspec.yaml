@@ -8,9 +8,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
-  # modular_api: ^0.0.7 # In production, uncomment this line and remove the path dependency
-  modular_api:
-    path: ../../modular_api
+  modular_api: ^0.0.7
   postgres: ^3.0.0
   
 dev_dependencies:
