@@ -71,10 +71,9 @@ Middleware authMiddleware() {
         final userId = payload['sub'] as String?;
         final username = payload['username'] as String?;
 
-        final requestWithUser = request.change(context: {
-          'userId': userId,
-          'username': username,
-        });
+        final requestWithUser = request.change(
+          context: {'userId': userId, 'username': username},
+        );
 
         return handler(requestWithUser);
       } on JwtException catch (e) {
@@ -91,7 +90,3 @@ Middleware authMiddleware() {
     };
   };
 }
-
-
-
-

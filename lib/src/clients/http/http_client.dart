@@ -177,7 +177,7 @@ Future<dynamic> httpClient({
             refreshEndpoint = '${parts[0]}/auth/refresh';
           }
         }
-        
+
         final refreshed = await _tryRefresh(
           baseUrl: baseUrl,
           refreshEndpoint: refreshEndpoint,

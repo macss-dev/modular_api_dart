@@ -29,7 +29,7 @@ Middleware authMiddleware() {
 
       // Extract token from Authorization header
       final authHeader = request.headers['authorization'];
-      
+
       if (authHeader == null) {
         return Response.unauthorized(
           'Missing authorization header',
@@ -57,7 +57,7 @@ Middleware authMiddleware() {
       // Verify JWT token
       try {
         final payload = JwtHelper.verifyToken(token);
-        
+
         // Check that it is an access token
         final tokenType = payload['type'] as String?;
         if (tokenType != 'access') {
@@ -71,7 +71,7 @@ Middleware authMiddleware() {
         // Add user information to the context (optional)
         final userId = payload['sub'] as String?;
         final username = payload['username'] as String?;
-        
+
         // We can add this information to the request if needed
         final requestWithUser = request.change(context: {
           'userId': userId,

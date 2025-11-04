@@ -255,7 +255,7 @@ class FlutterSecureStorageAdapter implements TokenStorageAdapter {
 
 ```yaml
 dependencies:
-  modular_api: ^0.0.4
+  modular_api: ^0.0.7
   flutter_secure_storage: ^9.2.2
 ```
 

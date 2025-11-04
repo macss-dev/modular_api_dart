@@ -15,7 +15,7 @@ Future<void> main(List<String> args) async {
 
   // Global middlewares
   api.use(exampleCorsMiddleware());
-  
+
   // Auth middleware (will be applied to all routes except public ones)
   api.use(authMiddleware());
 

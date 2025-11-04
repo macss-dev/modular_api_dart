@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.0.7] - 2025-11-04
+### Added
+- **httpClient** — intelligent HTTP client with automatic authentication:
+  - Automatic token attachment for authenticated requests (`auth: true`)
+  - Auto-capture of access and refresh tokens from login responses
+  - Transparent retry with refresh token on 401 responses
+  - Throws `AuthReLoginException` when refresh fails (signals re-login required)
+  - Per-user token management via `user` parameter
+- **Token** (in-memory session) — static class for managing access tokens:
+  - `Token.accessToken` — current access token
+  - `Token.accessExp` — access token expiration timestamp
+  - `Token.isAuthenticated` — check if user has valid token
+  - `Token.isExpired` — check if current token is expired
+  - `Token.clear()` — clear session
+- **TokenVault** (persistent storage) — configurable adapter for refresh tokens:
+  - `TokenVault.saveRefresh(userId, token)` — persist refresh token
+  - `TokenVault.readRefresh(userId)` — retrieve refresh token
+  - `TokenVault.deleteRefresh(userId)` — delete specific refresh token
+  - `TokenVault.deleteAll()` — clear all tokens
+  - `TokenVault.configure(adapter)` — set storage adapter
+  - Includes `MemoryStorageAdapter` (default) and `FileStorageAdapter` with optional encryption
+- **JwtHelper** — JWT generation and validation utilities:
+  - `generateAccessToken({userId, username})` — create access tokens (15 min)
+  - `generateRefreshToken({userId, tokenId})` — create refresh tokens (7 days)
+  - `verifyToken(token)` — validate and decode JWT
+  - `calculateRefreshTokenExpiration()` — get refresh token expiry date
+  - Reads secret from `JWT_SECRET` environment variable
+- **PasswordHasher** — bcrypt password hashing:
+  - `hash(password, {cost = 12})` — generate bcrypt hash
+  - `verify(password, hash)` — verify password against hash
+  - `needsRehash(hash, {cost})` — check if hash needs update
+- **TokenHasher** — SHA-256 token hashing for secure storage:
+  - `hash(token)` — generate SHA-256 hash (64 hex chars)
+  - `verify(token, expectedHash)` — verify token against hash
+- **AuthReLoginException** — specialized exception for auth flow control
+- Comprehensive authentication documentation:
+  - **docs/auth_implementation_guide.md** — Complete JWT authentication implementation guide with refresh tokens, including database setup, repository patterns, use cases, and client integration (Flutter & Dart)
+  - **docs/http_client_guide.md** — Focused guide for using httpClient in Flutter and pure Dart applications with configuration examples and best practices
+- Complete E2E authentication test suite:
+  - `template/test/e2e/auth_flow_test.dart` — 25+ comprehensive tests covering login, refresh, logout, protected endpoints, concurrent requests, auto-refresh behavior, and re-login exception handling
+
+### Changed
+- All documentation translated to English for consistency
+
 ## [0.0.6] - 2025-10-30
 ### Added
 - Exported `useCaseTestHandler` in main library export (`lib/modular_api.dart`) for convenient unit testing of UseCases without starting an HTTP server.

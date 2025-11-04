@@ -1,111 +1,116 @@
-# Guía de Implementación de Autenticación con modular_api
+# Authentication Implementation Guide for modular_api
 
-Esta guía explica cómo implementar un sistema completo de autenticación JWT con refresh tokens usando `modular_api`.
+This guide explains how to implement a full JWT authentication system with refresh tokens using `modular_api`.
 
 ---
 
-## 📋 Tabla de Contenidos
+## 📋 Table of Contents
 
-1. [Requisitos Previos](#requisitos-previos)
-2. [Estructura del Sistema](#estructura-del-sistema)
-3. [Configuración de la Base de Datos](#configuración-de-la-base-de-datos)
-4. [Dependencias Requeridas](#dependencias-requeridas)
-5. [Estructura de Archivos](#estructura-de-archivos)
-6. [Implementación Paso a Paso](#implementación-paso-a-paso)
-7. [Uso desde Cliente (Flutter)](#uso-desde-cliente-flutter)
+1. [Prerequisites](#prerequisites)
+2. [System Overview](#system-overview)
+3. [Database Setup](#database-setup)
+4. [Required Dependencies](#required-dependencies)
+5. [File Layout](#file-layout)
+6. [Step-by-step Implementation](#step-by-step-implementation)
+7. [Client Usage (Flutter / Dart)](#client-usage-flutter--dart)
+  - [Option 1: Using httpClient (Recommended)](#option-1-using-httpclient-recommended)
+  - [Option 2: Manual http (Traditional)](#option-2-manual-http-traditional)
 8. [Testing](#testing)
-9. [Seguridad y Mejores Prácticas](#seguridad-y-mejores-prácticas)
+  - [UseCase Unit Tests](#usecase-unit-tests)
+  - [E2E Tests with httpClient](#e2e-tests-with-httpclient)
+  - [Testing Patterns with httpClient](#testing-patterns-with-httpclient)
+9. [Security and Best Practices](#security-and-best-practices)
 
 ---
 
-## Requisitos Previos
+## Prerequisites
 
-- Dart SDK 3.8.1 o superior
-- PostgreSQL 12 o superior
-- Conocimientos básicos de JWT
-- Conocimientos de SQL
+- Dart SDK 3.8.1 or newer
+- PostgreSQL 12 or newer
+- Basic knowledge of JWT
+- Basic SQL knowledge
 
 ---
 
-## Estructura del Sistema
+## System Overview
 
-El sistema de autenticación implementa:
+The authentication system implements:
 
-- ✅ **Login**: Autenticación con username/password → retorna access token + refresh token
-- ✅ **Refresh**: Intercambiar refresh token por nuevo access token
-- ✅ **Logout**: Revocar un refresh token específico (cerrar sesión en un dispositivo)
-- ✅ **Logout All**: Revocar todos los refresh tokens del usuario (cerrar todas las sesiones)
-- ✅ **Token Rotation**: Opcional, genera nuevo refresh token en cada refresh (más seguro)
-- ✅ **Password Hashing**: Bcrypt con cost factor 12
-- ✅ **Token Storage**: Hashes SHA-256 en base de datos
+- ✅ **Login**: Authenticate with username/password → returns access token + refresh token
+- ✅ **Refresh**: Exchange a refresh token for a new access token
+- ✅ **Logout**: Revoke a specific refresh token (log out a device/session)
+- ✅ **Logout All**: Revoke all refresh tokens for a user (log out all sessions)
+- ✅ **Token Rotation**: Optional; issue a new refresh token on each refresh for extra security
+- ✅ **Password Hashing**: bcrypt with cost factor 12
+- ✅ **Token Storage**: SHA-256 hashes stored in the database
 
-### Flujo de Tokens
+### Token Flow
 
 ```
 ┌─────────────┐
-│   Cliente   │
+│   Client    │
 └──────┬──────┘
        │
        │ 1. POST /api/auth/login
        │    {username, password}
        ▼
 ┌─────────────────────────────┐
-│         Servidor            │
-│  ┌─────────────────────┐   │
-│  │ LoginUseCase        │   │
-│  │ - Verificar credenc.│   │
-│  │ - Generar tokens    │   │
-│  │ - Guardar hash      │   │
-│  └─────────────────────┘   │
+│         Server              │
+│  ┌─────────────────────┐    │
+│  │ LoginUseCase        │    │
+│  │ - Verify credentials│    │
+│  │ - Generate tokens   │    │
+│  │ - Save hash         │    │
+│  └─────────────────────┘    │
 └──────┬──────────────────────┘
        │
        │ 2. Response: {access_token, refresh_token, expires_in}
        ▼
 ┌─────────────┐
-│   Cliente   │
-│ Guarda ambos│
+│   Client    │
+│ Stores both │
 │   tokens    │
 └──────┬──────┘
        │
-       │ (15 minutos después, access token expira)
+       │ (15 minutes later, access token expires)
        │
        │ 3. POST /api/auth/refresh
        │    {refresh_token}
        ▼
 ┌─────────────────────────────┐
-│         Servidor            │
+│         Server              │
 │  ┌─────────────────────┐   │
 │  │ RefreshUseCase      │   │
-│  │ - Verificar token   │   │
+│  │ - Verify token      │   │
 │  │ - Check DB hash     │   │
-│  │ - Generar nuevo AT  │   │
-│  │ - (Rotar RT)        │   │
+│  │ - Generate new AT   │   │
+│  │ - (Rotate RT)       │   │
 │  └─────────────────────┘   │
 └──────┬──────────────────────┘
        │
        │ 4. Response: {access_token, [refresh_token], expires_in}
        ▼
 ┌─────────────┐
-│   Cliente   │
-│  Actualiza  │
+│   Client    │
+│  Updates    │
 │   tokens    │
 └─────────────┘
 ```
 
 ---
 
-## Configuración de la Base de Datos
+## Database Setup
 
-### 1. Crear el Schema
+### 1. Create the Schema
 
 ```sql
--- Crear schema auth
+-- Create schema auth
 CREATE SCHEMA IF NOT EXISTS auth;
 ```
 
-### 2. Tabla: auth.user
+### 2. Table: auth.user
 
-Almacena información básica de usuarios.
+Stores basic user information.
 
 ```sql
 CREATE TABLE auth.user (
@@ -124,15 +129,15 @@ CREATE INDEX ix_user_username   ON auth.user(username);
 CREATE INDEX ix_user_full_name  ON auth.user(full_name);
 ```
 
-**Campos:**
-- `id`: Identificador único (auto-incremento)
-- `username`: Nombre de usuario único (3-16 caracteres recomendado)
-- `full_name`: Nombre completo del usuario
-- `created_at`: Fecha de creación del usuario
+**Fields:**
+- `id`: Unique identifier (auto-increment)
+- `username`: Unique username (3-16 characters recommended)
+- `full_name`: User full name
+- `created_at`: Creation timestamp
 
-### 3. Tabla: auth.password
+### 3. Table: auth.password
 
-Almacena hashes de contraseñas (bcrypt).
+Stores password hashes (bcrypt).
 
 ```sql
 CREATE TABLE auth.password (
@@ -152,18 +157,18 @@ CREATE TABLE auth.password (
 CREATE INDEX ix_password_id_user ON auth.password(id_user);
 ```
 
-**Campos:**
-- `id`: Identificador único
-- `id_user`: Referencia al usuario (FK)
-- `password_hash`: Hash bcrypt de la contraseña (60 caracteres)
-- `created_at`: Fecha de creación
-- `updated_at`: Fecha de última actualización
+**Fields:**
+- `id`: Unique identifier
+- `id_user`: Reference to the user (FK)
+- `password_hash`: bcrypt hash of the password (60 characters)
+- `created_at`: Creation timestamp
+- `updated_at`: Last update timestamp
 
-**IMPORTANTE**: Relación 1:1 con `auth.user` (un usuario, una contraseña).
+**IMPORTANT**: 1:1 relation with `auth.user` (one user, one password).
 
-### 4. Tabla: auth.refresh_token
+### 4. Table: auth.refresh_token
 
-Almacena hashes de refresh tokens y audit trail.
+Stores refresh token hashes and an audit trail.
 
 ```sql
 CREATE TABLE auth.refresh_token (
@@ -188,27 +193,27 @@ CREATE INDEX ix_refresh_token_hash ON auth.refresh_token(token_hash);
 CREATE INDEX ix_refresh_token_revoked ON auth.refresh_token(revoked);
 ```
 
-**Campos:**
-- `id`: Identificador único (se incluye en el JWT como `jti`)
-- `id_user`: Referencia al usuario (FK)
-- `token_hash`: Hash SHA-256 del refresh token (64 caracteres hex)
-- `previous_id`: ID del token anterior (para token rotation chain)
-- `revoked`: Indica si el token fue revocado (soft delete)
-- `created_at`: Fecha de creación del token
-- `expires_at`: Fecha de expiración del token (7 días por defecto)
+**Fields:**
+- `id`: Unique identifier (included in JWT as `jti`)
+- `id_user`: Reference to the user (FK)
+- `token_hash`: SHA-256 hash of the refresh token (64 hex chars)
+- `previous_id`: Previous token ID (for token rotation chain)
+- `revoked`: Indicates if the token was revoked (soft delete)
+- `created_at`: Token creation timestamp
+- `expires_at`: Token expiration timestamp (7 days by default)
 
-**Relación 1:N con `auth.user`**: Un usuario puede tener múltiples refresh tokens activos (múltiples dispositivos/sesiones).
+**Relation 1:N with `auth.user`**: A user can have multiple active refresh tokens (multiple devices/sessions).
 
-### 5. Datos de Prueba (Seed)
+### 5. Seed Data (Example)
 
 ```sql
--- Usuarios de ejemplo
+-- Example users
 INSERT INTO auth.user (username, full_name) VALUES
   ('example', 'Example User'),
   ('admin', 'Administrator User'),
   ('testuser', 'Test User Demo');
 
--- Contraseñas (bcrypt hash de las contraseñas)
+-- Passwords (bcrypt hashes)
 -- example: abc123
 -- admin: password123
 -- testuser: password123
@@ -220,45 +225,74 @@ INSERT INTO auth.password (id_user, password_hash) VALUES
 
 ---
 
-## Dependencias Requeridas
+## Required Dependencies
 
-### Servidor (Dart Backend)
+### Server (Dart Backend)
 
-Agrega al `pubspec.yaml`:
+Add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  modular_api: ^0.0.7       # Incluye bcrypt, dart_jsonwebtoken y crypto
-  postgres: ^3.0.0          # Cliente PostgreSQL
+  modular_api: ^0.0.7       # Complete framework includes:
+                            # - UseCase pattern
+                            # - httpClient with auto-auth
+                            # - JwtHelper, PasswordHasher, TokenHasher
+                            # - bcrypt, dart_jsonwebtoken, crypto
+  postgres: ^3.0.0          # PostgreSQL client
   
 dev_dependencies:
   test: ^1.24.0             # Testing
-  http: ^1.5.0              # Cliente HTTP para tests E2E
+  http: ^1.5.0              # HTTP client for E2E tests
 ```
 
-### Cliente Flutter
+### Flutter Client
 
-Agrega al `pubspec.yaml` de tu app Flutter:
+Add to your Flutter app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  http: ^1.5.0                        # Cliente HTTP
-  flutter_secure_storage: ^9.2.2     # Almacenamiento seguro de tokens
-  dart_jsonwebtoken: ^2.14.0          # Decodificar JWT (opcional)
+  modular_api: ^0.0.7                 # Includes httpClient, Token, TokenVault, etc.
+  flutter_secure_storage: ^9.2.2     # Secure token storage
+  http: ^1.5.0                        # HTTP client (fallback if not using httpClient)
+```
+
+**IMPORTANT**: If you use the bundled `httpClient` (recommended), you don't need `package:http` in your Flutter client — `httpClient` handles HTTP requests for you.
+
+### Pure Dart Server (No Flutter)
+
+For pure Dart servers or CLIs, `modular_api` includes `FileStorageAdapter` to store tokens on disk:
+
+```yaml
+dependencies:
+  modular_api: ^0.0.7
+  postgres: ^3.0.0
+```
+
+Configure TokenVault with FileStorage:
+
+```dart
+import 'package:modular_api/modular_api.dart';
+
+void main() {
+  // FileStorageAdapter is included in modular_api
+  // By default it saves tokens under a .tokens/ directory
+
+  runApp();
+}
 ```
 
 ---
 
-## Estructura de Archivos
+## File Layout
 
 ```
 lib/
 ├── db/
-│   └── postgres_client.dart          # Cliente PostgreSQL
+│   └── postgres_client.dart          # PostgreSQL client
 └── modules/
     └── auth/
-        ├── auth_builder.dart         # Registro de endpoints
-        ├── auth_repository.dart      # Operaciones de DB
+        ├── auth_builder.dart         # Endpoint registration
+        ├── auth_repository.dart      # DB operations
         └── usecases/
             ├── login.dart            # POST /auth/login
             ├── refresh.dart          # POST /auth/refresh
@@ -267,7 +301,7 @@ lib/
 
 db/
 └── auth/
-    ├── auth.sql                      # Schema completo
+    ├── auth.sql                      # Complete schema
     └── tables/
         ├── user.sql
         ├── password.sql
@@ -284,84 +318,84 @@ test/
 
 ---
 
-## Implementación Paso a Paso
+## Step-by-step Implementation
 
-### Paso 1: Utilidades Base
+### Step 1: Core Utilities
 
-**IMPORTANTE**: Las utilidades `JwtHelper` y `PasswordHasher` están incluidas en el paquete `modular_api` desde la versión 0.0.7. Solo necesitas importarlas:
+**IMPORTANT**: The `JwtHelper` and `PasswordHasher` utilities are included in the `modular_api` package since version 0.0.7. You only need to import them:
 
 ```dart
 import 'package:modular_api/modular_api.dart';
 
-// Ya tienes acceso a:
-// - JwtHelper: Generación y validación de JWT
-// - JwtException: Excepción para errores JWT
-// - PasswordHasher: Hash y verificación de contraseñas con bcrypt
+// You now have access to:
+// - JwtHelper: JWT generation and validation
+// - JwtException: Exception for JWT errors
+// - PasswordHasher: Password hashing and verification with bcrypt
 ```
 
-#### 1.1 JwtHelper (incluido en modular_api)
+#### 1.1 JwtHelper (included in modular_api)
 
-El `JwtHelper` incluido en el framework proporciona:
+The `JwtHelper` included in the framework provides:
 
-**Métodos:**
-- `generateAccessToken({required int userId, required String username})` - Genera token de acceso (15 min)
-- `generateRefreshToken({required int userId, required int tokenId})` - Genera token de refresco (7 días)
-- `verifyToken(String token)` - Verifica y decodifica un token JWT
-- `calculateRefreshTokenExpiration()` - Calcula fecha de expiración del refresh token
-- `accessTokenExpiresIn` - Getter para tiempo de expiración del access token (en segundos)
+**Methods:**
+- `generateAccessToken({required int userId, required String username})` - Generate access token (15 min)
+- `generateRefreshToken({required int userId, required int tokenId})` - Generate refresh token (7 days)
+- `verifyToken(String token)` - Verify and decode a JWT token
+- `calculateRefreshTokenExpiration()` - Calculate refresh token expiration date
+- `accessTokenExpiresIn` - Getter for access token expiration time (in seconds)
 
-**Configuración:**
-- El `JwtHelper` lee el secreto JWT de la variable de entorno `JWT_SECRET`
-- Access tokens: 15 minutos de duración
-- Refresh tokens: 7 días de duración
+**Configuration:**
+- `JwtHelper` reads the JWT secret from the `JWT_SECRET` environment variable
+- Access tokens: 15 minutes duration
+- Refresh tokens: 7 days duration
 
-**Ejemplo de uso:**
+**Usage example:**
 ```dart
-// Generar access token
+// Generate access token
 final accessToken = JwtHelper.generateAccessToken(
   userId: 1,
   username: 'example',
 );
 
-// Generar refresh token
+// Generate refresh token
 final refreshToken = JwtHelper.generateRefreshToken(
   userId: 1,
   tokenId: 123,
 );
 
-// Verificar token
+// Verify token
 try {
   final payload = JwtHelper.verifyToken(accessToken);
   print('User ID: ${payload['sub']}');
-  print('Type: ${payload['type']}'); // 'access' o 'refresh'
+  print('Type: ${payload['type']}'); // 'access' or 'refresh'
 } on JwtException catch (e) {
-  print('Token inválido: $e');
+  print('Invalid token: $e');
 }
 ```
 
-#### 1.2 PasswordHasher (incluido en modular_api)
+#### 1.2 PasswordHasher (included in modular_api)
 
-El `PasswordHasher` incluido en el framework proporciona:
+The `PasswordHasher` included in the framework provides:
 
-**Métodos:**
-- `hash(String password, {int cost = 12})` - Genera hash bcrypt de la contraseña
-- `verify(String password, String hash)` - Verifica contraseña contra hash
-- `needsRehash(String hash, {int cost = 12})` - Determina si el hash necesita actualizarse
+**Methods:**
+- `hash(String password, {int cost = 12})` - Generate bcrypt hash of password
+- `verify(String password, String hash)` - Verify password against hash
+- `needsRehash(String hash, {int cost = 12})` - Determine if hash needs updating
 
-#### 1.3 TokenHasher (incluido en modular_api)
+#### 1.3 TokenHasher (included in modular_api)
 
-El `TokenHasher` incluido en el framework proporciona hashing SHA-256 seguro para almacenar tokens:
+The `TokenHasher` included in the framework provides secure SHA-256 hashing for storing tokens:
 
-**Métodos:**
-- `hash(String token)` - Genera hash SHA-256 del token (64 caracteres hexadecimales)
-- `verify(String token, String expectedHash)` - Verifica token contra hash almacenado
+**Methods:**
+- `hash(String token)` - Generate SHA-256 hash of token (64 hexadecimal characters)
+- `verify(String token, String expectedHash)` - Verify token against stored hash
 
-**Propósito:**
-Los refresh tokens deben almacenarse hasheados en la base de datos por seguridad. Si la base de datos es comprometida, los tokens originales no pueden ser recuperados del hash.
+**Purpose:**
+Refresh tokens should be stored hashed in the database for security. If the database is compromised, original tokens cannot be recovered from the hash.
 
-**Ejemplo de uso:**
+**Usage example:**
 ```dart
-// Hashear refresh token antes de guardar en DB
+// Hash refresh token before saving to DB
 final refreshToken = JwtHelper.generateRefreshToken(
   userId: userId,
   tokenId: tokenId,
@@ -374,49 +408,49 @@ await repo.saveRefreshToken(
   expiresAt: expiresAt,
 );
 
-// Verificar token recibido contra hash almacenado
+// Verify received token against stored hash
 final incomingTokenHash = TokenHasher.hash(receivedToken);
 final storedToken = await repo.getRefreshToken(incomingTokenHash);
 
-// O usar el método de conveniencia
+// Or use convenience method
 if (TokenHasher.verify(receivedToken, storedToken.hash)) {
-  // Token válido
+  // Valid token
 }
 ```
 
-**Configuración:**
-- Cost factor por defecto: 12 (ajustable según hardware)
-- Usa bcrypt internamente
+**Configuration:**
+- Default cost factor: 12 (adjustable depending on hardware)
+- Uses bcrypt internally
 
-**Ejemplo de uso:**
+**Usage example:**
 ```dart
-// Hash de contraseña
+// Hash password
 final hash = PasswordHasher.hash('abc123');
 // $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYHNqJzS0yG
 
-// Verificar contraseña
+// Verify password
 final isValid = PasswordHasher.verify('abc123', hash);
 print(isValid); // true
 
-// Verificar si necesita rehash (ej: si cambió el cost factor)
+// Check if rehash needed (e.g., if cost factor changed)
 final needsUpdate = PasswordHasher.needsRehash(hash, cost: 13);
 ```
 
-**Ventajas de usar las utilidades incluidas:**
-- ✅ Sin dependencias adicionales (ya están en modular_api)
-- ✅ Configuración por defecto segura
-- ✅ Documentadas y testeadas
-- ✅ Compatibles con el resto del framework
-- ✅ Mantenidas y actualizadas con el paquete
+**Advantages of using included utilities:**
+- ✅ No additional dependencies (already in modular_api)
+- ✅ Secure default configuration
+- ✅ Documented and tested
+- ✅ Compatible with rest of framework
+- ✅ Maintained and updated with package
 
-### Paso 2: Repository
+### Step 2: Repository
 
 #### 2.1 Auth Repository (`lib/modules/auth/auth_repository.dart`)
 
 ```dart
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
-import 'package:modular_api/modular_api.dart';  // Importa JwtHelper y PasswordHasher
+import 'package:modular_api/modular_api.dart';  // Import JwtHelper and PasswordHasher
 import '../../db/postgres_client.dart';
 
 class AuthRepository {
@@ -424,7 +458,7 @@ class AuthRepository {
 
   AuthRepository(this._db);
 
-  /// Obtener usuario por username
+  /// Get user by username
   Future<Map<String, dynamic>?> getUserByUsername(String username) async {
     final results = await _db.query(
       '''
@@ -437,7 +471,7 @@ class AuthRepository {
     return results.isEmpty ? null : results.first;
   }
 
-  /// Verificar contraseña
+  /// Verify password
   Future<bool> verifyPassword(int userId, String password) async {
     final results = await _db.query(
       '''
@@ -454,7 +488,7 @@ class AuthRepository {
     return PasswordHasher.verify(password, storedHash);
   }
 
-  /// Autenticar usuario
+  /// Authenticate user
   Future<Map<String, dynamic>?> authenticate(
     String username,
     String password,
@@ -468,7 +502,7 @@ class AuthRepository {
     return isValid ? user : null;
   }
 
-  /// Guardar refresh token
+  /// Save refresh token
   Future<int> saveRefreshToken({
     required int userId,
     required String tokenHash,
@@ -491,7 +525,7 @@ class AuthRepository {
     return results.first['id'] as int;
   }
 
-  /// Obtener refresh token por hash
+  /// Get refresh token by hash
   Future<Map<String, dynamic>?> getRefreshToken(String tokenHash) async {
     final results = await _db.query(
       '''
@@ -505,7 +539,7 @@ class AuthRepository {
     return results.isEmpty ? null : results.first;
   }
 
-  /// Revocar refresh token
+  /// Revoke refresh token
   Future<void> revokeRefreshToken(int tokenId) async {
     await _db.execute(
       '''
@@ -517,7 +551,7 @@ class AuthRepository {
     );
   }
 
-  /// Revocar todos los tokens de un usuario
+  /// Revoke all tokens for a user
   Future<void> revokeAllUserTokens(int userId) async {
     await _db.execute(
       '''
@@ -530,7 +564,7 @@ class AuthRepository {
     );
   }
 
-  /// Contar tokens activos de un usuario
+  /// Count active tokens for a user
   Future<int> countActiveUserTokens(int userId) async {
     final results = await _db.query(
       '''
@@ -546,14 +580,14 @@ class AuthRepository {
 }
 ```
 
-### Paso 3: Use Cases
+### Step 3: Use Cases
 
 #### 3.1 Login (`lib/modules/auth/usecases/login.dart`)
 
 ```dart
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:modular_api/modular_api.dart';  // Importa UseCase, Input, Output, JwtHelper
+import 'package:modular_api/modular_api.dart';  // Import UseCase, Input, Output, JwtHelper
 import '../../../db/postgres_client.dart';
 import '../auth_repository.dart';
 
@@ -685,7 +719,7 @@ class LoginUseCase extends UseCase<LoginInput, LoginOutput> {
 
   @override
   Future<LoginOutput> execute() async {
-    // Autenticar usuario
+    // Authenticate user
     final user = await _repository.authenticate(
       input.username,
       input.password,
@@ -698,13 +732,13 @@ class LoginUseCase extends UseCase<LoginInput, LoginOutput> {
     final userId = user['id'] as int;
     final username = user['username'] as String;
 
-    // Generar access token
+    // Generate access token
     final accessToken = JwtHelper.generateAccessToken(
       userId: userId,
       username: username,
     );
 
-    // Generar refresh token (primero guardar en DB para obtener ID)
+    // Generate refresh token (first save to DB to get ID)
     final tokenHash = sha256.convert(utf8.encode(DateTime.now().toString())).toString();
     final expiresAt = JwtHelper.calculateRefreshTokenExpiration();
     
@@ -719,7 +753,7 @@ class LoginUseCase extends UseCase<LoginInput, LoginOutput> {
       tokenId: tokenId,
     );
 
-    // Actualizar hash del token en DB
+    // Update token hash in DB
     final actualTokenHash = sha256.convert(utf8.encode(refreshToken)).toString();
     await _db.execute(
       'UPDATE auth.refresh_token SET token_hash = @hash WHERE id = @id',
@@ -742,15 +776,15 @@ class LoginUseCase extends UseCase<LoginInput, LoginOutput> {
 #### 3.2 Refresh (`lib/modules/auth/usecases/refresh.dart`)
 
 ```dart
-// Similar estructura a Login, ver template/lib/modules/auth/usecases/refresh.dart
-// Implementa token rotation opcional y validación del refresh token
+// Similar structure to Login, see template/lib/modules/auth/usecases/refresh.dart
+// Implements optional token rotation and refresh token validation
 ```
 
-#### 3.3 Logout y Logout All
+#### 3.3 Logout and Logout All
 
-Ver implementaciones completas en el template.
+See complete implementations in the template.
 
-### Paso 4: Registrar Módulo
+### Step 4: Register Module
 
 #### 4.1 Auth Builder (`lib/modules/auth/auth_builder.dart`)
 
@@ -769,7 +803,7 @@ void buildAuthModule(ModuleBuilder m) {
 }
 ```
 
-#### 4.2 Registrar en ModularApi (`bin/main.dart`)
+#### 4.2 Register in ModularApi (`bin/main.dart`)
 
 ```dart
 import 'package:modular_api/modular_api.dart';
@@ -778,12 +812,12 @@ import '../lib/modules/auth/auth_builder.dart';
 Future<void> main() async {
   final api = ModularApi(basePath: '/api');
 
-  // Registrar módulo auth
+  // Register auth module
   api.module('auth', buildAuthModule);
 
   // Middlewares
   api.use(cors());
-  api.use(apiKey()); // Opcional
+  api.use(apiKey()); // Optional
 
   await api.serve(port: 3456);
   print('🚀 Server running at http://localhost:3456');
@@ -791,9 +825,9 @@ Future<void> main() async {
 }
 ```
 
-### Paso 5: Variables de Entorno
+### Step 5: Environment Variables
 
-Crear archivo `.env`:
+Create `.env` file:
 
 ```env
 # Server
@@ -812,24 +846,365 @@ JWT_EXPIRES_IN=900
 REFRESH_TOKEN_DAYS=7
 ```
 
-**IMPORTANTE**: Generar una clave segura para JWT:
+**IMPORTANT**: Generate a secure key for JWT:
 ```bash
 openssl rand -base64 32
 ```
 
 ---
 
-## Uso desde Cliente (Flutter)
+## Usage from Client (Flutter/Dart)
 
-### Paso 1: Crear Adapter para Flutter Secure Storage
+`modular_api` includes an intelligent HTTP client called `httpClient` that significantly simplifies interaction with authenticated endpoints. This client automatically handles:
 
-Crea `lib/auth/flutter_secure_storage_adapter.dart`:
+- ✅ Attaching authorization tokens
+- ✅ Capturing and storing login tokens
+- ✅ Automatic retry with refresh token on 401
+- ✅ Throwing `AuthReLoginException` when re-login is required
+
+### Option 1: Using httpClient (Recommended) 🌟
+
+The `httpClient` is included in `package:modular_api/modular_api.dart` and provides a simplified API with automatic authentication handling.
+
+#### httpClient Features
+
+**Signature:**
+```dart
+Future<dynamic> httpClient({
+  required String method,
+  required String baseUrl,
+  required String endpoint,
+  Map<String, String>? headers,
+  Map<String, dynamic>? body,
+  String? errorMessage,
+  bool auth = false,
+  String? user,
+})
+```
+
+**Parameters:**
+- `method`: HTTP method ('GET', 'POST', 'PUT', 'DELETE')
+- `baseUrl`: Server base URL (e.g., 'http://localhost:3456')
+- `endpoint`: Relative endpoint (e.g., 'api/auth/login')
+- `headers`: Optional additional headers
+- `body`: JSON request body (for POST/PUT)
+- `errorMessage`: Custom error message
+- `auth`: If `true`, automatically attaches Bearer token
+- `user`: User ID to store/retrieve tokens (required when `auth=true`)
+
+**Return:**
+- Returns parsed body as `Map<String, dynamic>` or `List` depending on response
+- Throws `Exception` if status code != 2xx
+- Throws `AuthReLoginException` if refresh fails (signal for re-login)
+
+#### Step 1: Configure TokenVault
+
+`TokenVault` is the persistent storage for refresh tokens. For Flutter, use `FlutterSecureStorageAdapter`:
+
+Create `lib/auth/flutter_secure_storage_adapter.dart`:
 
 ```dart
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// IMPORTANTE: Este adapter es necesario para apps Flutter.
-/// Para apps de servidor Dart, usar FileStorageAdapter (incluido en modular_api).
+/// Adapter for TokenVault using FlutterSecureStorage
+class FlutterTokenVault {
+  static final _storage = const FlutterSecureStorage();
+
+  static Future<void> saveRefresh(String userId, String token) =>
+      _storage.write(key: 'refresh_token_$userId', value: token);
+
+  static Future<String?> readRefresh(String userId) =>
+      _storage.read(key: 'refresh_token_$userId');
+
+  static Future<void> deleteRefresh(String userId) =>
+      _storage.delete(key: 'refresh_token_$userId');
+
+  static Future<void> deleteAll() => _storage.deleteAll();
+}
+```
+
+Initialize TokenVault in your app:
+
+```dart
+import 'package:modular_api/modular_api.dart';
+import 'auth/flutter_secure_storage_adapter.dart';
+
+void main() {
+  // Configure TokenVault with Flutter adapter
+  TokenVault.saveRefresh = FlutterTokenVault.saveRefresh;
+  TokenVault.readRefresh = FlutterTokenVault.readRefresh;
+  TokenVault.deleteRefresh = FlutterTokenVault.deleteRefresh;
+
+  runApp(MyApp());
+}
+```
+
+#### Step 2: Implement AuthService with httpClient
+
+Crea `lib/auth/auth_service.dart`:
+
+```dart
+import 'package:modular_api/modular_api.dart';
+
+class AuthService {
+  final String baseUrl;
+  String? _currentUserId;
+
+  AuthService({required this.baseUrl});
+
+  /// Login - httpClient automatically captures tokens
+  Future<LoginResponse> login({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final body = await httpClient(
+        method: 'POST',
+        baseUrl: baseUrl,
+        endpoint: 'api/auth/login',
+        body: {
+          'username': username,
+          'password': password,
+        },
+        auth: true,  // Enable automatic token capture
+        user: username,  // Unique user identifier
+      ) as Map<String, dynamic>;
+
+      _currentUserId = username;
+
+      return LoginResponse(
+        accessToken: body['access_token'] as String,
+        tokenType: body['token_type'] as String,
+        expiresIn: body['expires_in'] as int,
+        refreshToken: body['refresh_token'] as String,
+      );
+    } on AuthReLoginException {
+      throw AuthException('Re-login required');
+    } catch (e) {
+      throw AuthException('Login failed: $e');
+    }
+  }
+
+  /// Logout - Revoke refresh token on server
+  Future<void> logout() async {
+    if (_currentUserId == null) return;
+
+    try {
+      await httpClient(
+        method: 'POST',
+        baseUrl: baseUrl,
+        endpoint: 'api/auth/logout',
+        body: {
+          'refresh_token': await TokenVault.readRefresh(_currentUserId!),
+        },
+      );
+    } catch (e) {
+      // Continue even if server fails
+    } finally {
+      await TokenVault.deleteRefresh(_currentUserId!);
+      Token.clear();
+      _currentUserId = null;
+    }
+  }
+
+  /// Logout from all sessions
+  Future<void> logoutAll() async {
+    if (_currentUserId == null) return;
+
+    try {
+      await httpClient(
+        method: 'POST',
+        baseUrl: baseUrl,
+        endpoint: 'api/auth/logout_all',
+        body: {
+          'refresh_token': await TokenVault.readRefresh(_currentUserId!),
+        },
+      );
+    } catch (e) {
+      // Continue
+    } finally {
+      await TokenVault.deleteRefresh(_currentUserId!);
+      Token.clear();
+      _currentUserId = null;
+    }
+  }
+
+  /// Authenticated request - httpClient handles tokens automatically
+  Future<dynamic> authenticatedRequest({
+    required String method,
+    required String endpoint,
+    Map<String, dynamic>? body,
+  }) async {
+    if (_currentUserId == null) {
+      throw AuthException('Not authenticated');
+    }
+
+    try {
+      return await httpClient(
+        method: method,
+        baseUrl: baseUrl,
+        endpoint: endpoint,
+        body: body,
+        auth: true,  // Attach Bearer token automatically
+        user: _currentUserId!,  // Use current user's token
+      );
+    } on AuthReLoginException {
+      // Refresh failed, user must login again
+      _currentUserId = null;
+      Token.clear();
+      throw AuthException('Session expired, please login again');
+    }
+  }
+
+  bool get isAuthenticated => _currentUserId != null;
+  String? get currentUserId => _currentUserId;
+}
+
+class LoginResponse {
+  final String accessToken;
+  final String tokenType;
+  final int expiresIn;
+  final String refreshToken;
+
+  LoginResponse({
+    required this.accessToken,
+    required this.tokenType,
+    required this.expiresIn,
+    required this.refreshToken,
+  });
+}
+
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+  @override
+  String toString() => 'AuthException: $message';
+}
+```
+
+#### Step 3: Usage in Flutter
+
+```dart
+import 'package:modular_api/modular_api.dart';
+import 'auth/auth_service.dart';
+
+// Initialize
+final authService = AuthService(baseUrl: 'http://localhost:3456');
+
+// Login - httpClient automatically captures tokens
+try {
+  final response = await authService.login(
+    username: 'example',
+    password: 'abc123',
+  );
+  print('✅ Login successful! Token expires in ${response.expiresIn}s');
+} on AuthException catch (e) {
+  print('❌ Login failed: $e');
+}
+
+// Request to protected endpoint - Automatic auth handling
+try {
+  final profile = await authService.authenticatedRequest(
+    method: 'POST',
+    endpoint: 'api/users/profile',
+    body: {'user_id': 123},
+  );
+  print('Profile: $profile');
+} on AuthException catch (e) {
+  // Session expired, redirect to login
+  print('Session expired: $e');
+  // Navigator.pushReplacementNamed(context, '/login');
+}
+
+// Logout
+await authService.logout();
+
+// Logout from all sessions
+await authService.logoutAll();
+```
+
+#### Advantages of httpClient
+
+✅ **Cleaner code**: No need to handle headers manually  
+✅ **Auto-refresh**: Automatically retries with refresh token on 401  
+✅ **Automatic capture**: Login captures and saves tokens without extra code  
+✅ **Error handling**: `AuthReLoginException` signals when re-login is needed  
+✅ **Type-safe**: Returns parsed JSON directly  
+
+#### httpClient Flow with auth=true
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ httpClient(auth=true, user='john', ...)                     │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+              Does Token.accessToken exist?
+                         │
+           ┌─────────────┴─────────────┐
+           │ YES                       │ NO
+           ▼                           ▼
+   Attach Bearer token      Is endpoint /auth/login?
+   in Authorization header            │
+           │                 ┌─────────┴─────────┐
+           │                 │ YES               │ NO
+           ▼                 ▼                   ▼
+   Execute HTTP request   Continue without token   Throw error
+           │                    │
+           │                    ▼
+           │            Execute HTTP request
+           │                    │
+           │              Status 200?
+           │                    │
+           │              ┌─────┴─────┐
+           │              │ YES       │ NO
+           │              ▼           ▼
+           │        Capture tokens   Error
+           │        (access + refresh)
+           │              │
+           │        Saves to:
+           │        • Token.accessToken
+           │        • TokenVault.saveRefresh(user, refresh)
+           │              │
+           └──────────────┴─────────────┐
+                                        │
+                                        ▼
+                                 Status 200?
+                                        │
+                              ┌─────────┴─────────┐
+                              │ YES               │ NO (401)
+                              ▼                   ▼
+                        Return JSON    Has refresh token?
+                                                  │
+                                        ┌─────────┴─────────┐
+                                        │ YES               │ NO
+                                        ▼                   ▼
+                            Try POST /auth/refresh      Throw
+                            with refresh_token     AuthReLoginException
+                                        │
+                                  Refresh OK?
+                                        │
+                              ┌─────────┴─────────┐
+                              │ YES               │ NO
+                              ▼                   ▼
+                        Update tokens           Throw
+                        Retry request      AuthReLoginException
+                              │
+                        Return JSON
+```
+
+### Option 2: Using Manual HTTP (Traditional)
+
+If you prefer to handle tokens manually without `httpClient`, you can use the traditional approach with `package:http`.
+
+<details>
+<summary>View manual implementation with package:http</summary>
+
+#### Step 1: Create Adapter for Flutter Secure Storage
+
+```dart
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 class FlutterSecureStorageAdapter {
   FlutterSecureStorageAdapter({
     IOSOptions? iOptions,
@@ -849,34 +1224,26 @@ class FlutterSecureStorageAdapter {
 
   final FlutterSecureStorage _storage;
 
-  /// Guardar refresh token
   Future<void> saveRefresh(String userId, String token) =>
       _storage.write(key: 'refresh_token_$userId', value: token);
 
-  /// Leer refresh token
   Future<String?> readRefresh(String userId) =>
       _storage.read(key: 'refresh_token_$userId');
 
-  /// Eliminar refresh token
   Future<void> deleteRefresh(String userId) =>
       _storage.delete(key: 'refresh_token_$userId');
 
-  /// Eliminar todos los tokens
   Future<void> deleteAll() => _storage.deleteAll();
 
-  /// Guardar access token (opcional, si necesitas guardarlo)
   Future<void> saveAccess(String userId, String token) =>
       _storage.write(key: 'access_token_$userId', value: token);
 
-  /// Leer access token
   Future<String?> readAccess(String userId) =>
       _storage.read(key: 'access_token_$userId');
 }
 ```
 
-### Paso 2: Servicio de Autenticación
-
-Crea `lib/auth/auth_service.dart`:
+#### Step 2: Manual Authentication Service
 
 ```dart
 import 'dart:convert';
@@ -886,16 +1253,14 @@ import 'flutter_secure_storage_adapter.dart';
 class AuthService {
   final String baseUrl;
   final FlutterSecureStorageAdapter _storage;
+  String? _currentUserId;
+  String? _currentAccessToken;
 
   AuthService({
     required this.baseUrl,
     FlutterSecureStorageAdapter? storage,
   }) : _storage = storage ?? FlutterSecureStorageAdapter();
 
-  String? _currentUserId;
-  String? _currentAccessToken;
-
-  /// Login
   Future<LoginResponse> login({
     required String username,
     required String password,
@@ -916,10 +1281,7 @@ class AuthService {
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final loginResponse = LoginResponse.fromJson(data);
 
-    // Extraer userId del access token (decodificar JWT)
     final userId = _extractUserIdFromToken(loginResponse.accessToken);
-
-    // Guardar tokens
     await _storage.saveAccess(userId, loginResponse.accessToken);
     await _storage.saveRefresh(userId, loginResponse.refreshToken);
 
@@ -929,7 +1291,6 @@ class AuthService {
     return loginResponse;
   }
 
-  /// Refresh token
   Future<void> refreshToken() async {
     if (_currentUserId == null) {
       throw AuthException('No user logged in');
@@ -943,9 +1304,7 @@ class AuthService {
     final response = await http.post(
       Uri.parse('$baseUrl/api/auth/refresh'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'refresh_token': refreshToken,
-      }),
+      body: jsonEncode({'refresh_token': refreshToken}),
     );
 
     if (response.statusCode != 200) {
@@ -953,20 +1312,16 @@ class AuthService {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    
-    // Actualizar access token
     final newAccessToken = data['access_token'] as String;
     await _storage.saveAccess(_currentUserId!, newAccessToken);
     _currentAccessToken = newAccessToken;
 
-    // Si hay token rotation, actualizar refresh token
     if (data.containsKey('refresh_token')) {
       final newRefreshToken = data['refresh_token'] as String;
       await _storage.saveRefresh(_currentUserId!, newRefreshToken);
     }
   }
 
-  /// Logout (revocar token actual)
   Future<void> logout() async {
     if (_currentUserId == null) return;
 
@@ -979,7 +1334,7 @@ class AuthService {
           body: jsonEncode({'refresh_token': refreshToken}),
         );
       } catch (e) {
-        // Continuar incluso si falla la revocación en el servidor
+        // Continue even if it fails
       }
     }
 
@@ -989,32 +1344,8 @@ class AuthService {
     _currentAccessToken = null;
   }
 
-  /// Logout de todas las sesiones
-  Future<void> logoutAll() async {
-    if (_currentUserId == null) return;
-
-    final refreshToken = await _storage.readRefresh(_currentUserId!);
-    if (refreshToken != null) {
-      try {
-        await http.post(
-          Uri.parse('$baseUrl/api/auth/logout_all'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'refresh_token': refreshToken}),
-        );
-      } catch (e) {
-        // Continuar
-      }
-    }
-
-    await _storage.deleteAll();
-    _currentUserId = null;
-    _currentAccessToken = null;
-  }
-
-  /// Obtener access token actual
   Future<String?> getAccessToken() async {
     if (_currentAccessToken != null) {
-      // Verificar si está por expirar (menos de 1 minuto)
       if (_isTokenExpiringSoon(_currentAccessToken!)) {
         await refreshToken();
       }
@@ -1023,7 +1354,6 @@ class AuthService {
     return null;
   }
 
-  /// Hacer request autenticado
   Future<http.Response> authenticatedRequest({
     required String method,
     required String path,
@@ -1058,15 +1388,12 @@ class AuthService {
   }
 
   String _extractUserIdFromToken(String token) {
-    // Decodificar JWT (payload está en base64)
     final parts = token.split('.');
     if (parts.length != 3) throw AuthException('Invalid token format');
-
     final payload = parts[1];
     final normalized = base64Url.normalize(payload);
     final decoded = utf8.decode(base64Url.decode(normalized));
     final data = jsonDecode(decoded) as Map<String, dynamic>;
-
     return data['sub'] as String;
   }
 
@@ -1074,17 +1401,13 @@ class AuthService {
     try {
       final parts = token.split('.');
       if (parts.length != 3) return true;
-
       final payload = parts[1];
       final normalized = base64Url.normalize(payload);
       final decoded = utf8.decode(base64Url.decode(normalized));
       final data = jsonDecode(decoded) as Map<String, dynamic>;
-
       final exp = data['exp'] as int;
       final expiresAt = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
       final now = DateTime.now();
-
-      // Refrescar si expira en menos de 1 minuto
       return expiresAt.difference(now).inSeconds < 60;
     } catch (e) {
       return true;
@@ -1123,46 +1446,15 @@ class AuthException implements Exception {
 }
 ```
 
-### Paso 3: Uso en Flutter
-
-```dart
-// Inicializar
-final authService = AuthService(baseUrl: 'http://localhost:3456');
-
-// Login
-try {
-  final response = await authService.login(
-    username: 'example',
-    password: 'abc123',
-  );
-  print('Login exitoso! Access token expira en ${response.expiresIn}s');
-} catch (e) {
-  print('Login falló: $e');
-}
-
-// Hacer request autenticado
-try {
-  final response = await authService.authenticatedRequest(
-    method: 'GET',
-    path: '/api/users/profile',
-  );
-  print('Profile: ${response.body}');
-} catch (e) {
-  print('Request falló: $e');
-}
-
-// Logout
-await authService.logout();
-
-// Logout de todas las sesiones
-await authService.logoutAll();
-```
+</details>
 
 ---
 
 ## Testing
 
-### Test Unitario (Login)
+### Unit Testing (UseCase Level)
+
+To test UseCases individually, use `useCaseTestHandler`:
 
 ```dart
 import 'package:test/test.dart';
@@ -1184,6 +1476,7 @@ void main() {
       final body = jsonDecode(await response.readAsString());
       expect(body, containsPair('access_token', isA<String>()));
       expect(body, containsPair('refresh_token', isA<String>()));
+      expect(body, containsPair('token_type', 'Bearer'));
       expect(body, containsPair('expires_in', isA<int>()));
     });
 
@@ -1197,87 +1490,549 @@ void main() {
 
       expect(response.statusCode, equals(500));
     });
+
+    test('should validate empty username', () async {
+      final handler = useCaseTestHandler(LoginUseCase.factory);
+      
+      final response = await handler({
+        'username': '',
+        'password': 'abc123',
+      });
+
+      expect(response.statusCode, equals(400));
+    });
   });
 }
 ```
 
-### Test E2E
+### E2E Testing with httpClient
 
-Ver `template/test/e2e/auth_flow_test.dart` para ejemplo completo.
+E2E tests should use `httpClient` to maintain consistency with production code:
+
+```dart
+import 'dart:convert';
+import 'dart:io';
+import 'package:test/test.dart';
+import 'package:http/http.dart' as http;
+import 'package:modular_api/modular_api.dart';
+
+void main() {
+  late Process serverProcess;
+  const serverUrl = 'http://localhost:3456';
+
+  setUpAll(() async {
+    // Start server
+    print('🚀 Starting server for E2E tests...');
+    
+    final envVars = _loadEnvVariables();
+    serverProcess = await Process.start(
+      'dart',
+      ['run', 'bin/main.dart'],
+      environment: envVars,
+      workingDirectory: Directory.current.path,
+    );
+
+    // Wait for server to be ready
+    var attempts = 0;
+    const maxAttempts = 30;
+    var serverReady = false;
+
+    while (attempts < maxAttempts && !serverReady) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      try {
+        final response = await http
+            .get(Uri.parse('$serverUrl/health'))
+            .timeout(const Duration(seconds: 2));
+        if (response.statusCode == 200) {
+          serverReady = true;
+          print('✅ Server ready\n');
+        }
+      } catch (e) {
+        attempts++;
+      }
+    }
+
+    if (!serverReady) {
+      serverProcess.kill();
+      throw Exception('❌ Server did not respond');
+    }
+  });
+
+  tearDownAll(() async {
+    print('\n🛑 Stopping server...');
+    serverProcess.kill();
+    await serverProcess.exitCode;
+    print('✅ Server stopped');
+  });
+
+  group('E2E - Auth Flow with httpClient', () {
+    String? refreshToken;
+
+    test('1. Login - Successful with valid credentials', () async {
+      print('🧪 Test 1: Login with valid credentials');
+
+      // Use httpClient with auth=true to capture tokens automatically
+      final body = await httpClient(
+        method: 'POST',
+        baseUrl: serverUrl,
+        endpoint: 'api/auth/login',
+        body: {'username': 'example', 'password': 'abc123'},
+        auth: true,
+        user: 'test_user_1',
+      ) as Map<String, dynamic>;
+
+      print('   Response: ${body.keys.join(', ')}');
+
+      expect(body, containsPair('access_token', isA<String>()));
+      expect(body, containsPair('refresh_token', isA<String>()));
+      expect(body, containsPair('token_type', 'Bearer'));
+      expect(body, containsPair('expires_in', isA<int>()));
+
+      final accessToken = body['access_token'] as String;
+      refreshToken = body['refresh_token'] as String;
+
+      expect(accessToken, isNotEmpty);
+      expect(refreshToken, isNotEmpty);
+
+      print('✅ Login successful - tokens obtained');
+    });
+
+    test('2. Login - Invalid credentials should fail', () async {
+      print('\n🧪 Test 2: Login with incorrect password');
+
+      try {
+        await httpClient(
+          method: 'POST',
+          baseUrl: serverUrl,
+          endpoint: 'api/auth/login',
+          body: {'username': 'example', 'password': 'wrong_password'},
+          auth: true,
+          user: 'test_user_2',
+        );
+        fail('Expected login to fail with invalid credentials');
+      } catch (e) {
+        expect(e.toString(), contains('Error in HTTP request'));
+        print('✅ Invalid credentials correctly rejected');
+      }
+    });
+
+    test('3. Refresh - Valid refresh token', () async {
+      print('\n🧪 Test 3: Refresh with valid token');
+
+      expect(refreshToken, isNotNull, reason: 'Refresh token from login is required');
+
+      // Refresh doesn't use auth=true because it's not an authentication endpoint
+      final body = await httpClient(
+        method: 'POST',
+        baseUrl: serverUrl,
+        endpoint: 'api/auth/refresh',
+        body: {'refresh_token': refreshToken},
+      ) as Map<String, dynamic>;
+
+      print('   Response: ${body.keys.join(', ')}');
+
+      expect(body, containsPair('access_token', isA<String>()));
+      expect(body, containsPair('token_type', 'Bearer'));
+      expect(body, containsPair('expires_in', isA<int>()));
+
+      final newAccessToken = body['access_token'] as String;
+      expect(newAccessToken, isNotEmpty);
+      expect(newAccessToken.split('.').length, equals(3), 
+             reason: 'Access token should be a valid JWT (3 parts)');
+
+      // If token rotation enabled, update refresh token
+      if (body.containsKey('refresh_token')) {
+        final newRefreshToken = body['refresh_token'] as String;
+        expect(newRefreshToken, isNotEmpty);
+        expect(
+          newRefreshToken,
+          isNot(equals(refreshToken)),
+          reason: 'Rotated refresh token should be different',
+        );
+        refreshToken = newRefreshToken;
+        print('   Token rotation detected - refresh token updated');
+      }
+
+      print('✅ Refresh successful - new access token obtained');
+    });
+
+    test('4. Protected Endpoint - Access with valid token', () async {
+      print('\n🧪 Test 4: Access protected endpoint with valid token');
+
+      // httpClient with auth=true automatically attaches Bearer token
+      final body = await httpClient(
+        method: 'POST',
+        baseUrl: serverUrl,
+        endpoint: 'api/module1/hello-world',
+        body: {'word': 'World'},
+        auth: true,
+        user: 'test_user_1',  // Same user from login
+      ) as Map<String, dynamic>;
+
+      print('   Response: $body');
+
+      expect(body, containsPair('output', isA<String>()));
+      expect(body['output'], contains('Hello'));
+      expect(body['output'], contains('World'));
+
+      print('✅ Protected endpoint accessible with valid token');
+    });
+
+    test('5. Protected Endpoint - Fails without token', () async {
+      print('\n🧪 Test 5: Access protected endpoint without token');
+
+      try {
+        // Without auth=true, no token is attached
+        await httpClient(
+          method: 'POST',
+          baseUrl: serverUrl,
+          endpoint: 'api/module1/hello-world',
+          body: {'word': 'World'},
+        );
+        fail('Expected request to fail without token');
+      } catch (e) {
+        expect(e.toString(), contains('Error in HTTP request'));
+        print('✅ Protected endpoint correctly rejects requests without token');
+      }
+    });
+
+    test('6. Logout - Successfully revoke token', () async {
+      print('\n🧪 Test 6: Logout with valid refresh token');
+
+      // First, do fresh login
+      final loginBody = await httpClient(
+        method: 'POST',
+        baseUrl: serverUrl,
+        endpoint: 'api/auth/login',
+        body: {'username': 'example', 'password': 'abc123'},
+        auth: true,
+        user: 'test_user_6',
+      ) as Map<String, dynamic>;
+
+      final logoutRefreshToken = loginBody['refresh_token'] as String;
+
+      // Logout no usa auth=true
+      final body = await httpClient(
+        method: 'POST',
+        baseUrl: serverUrl,
+        endpoint: 'api/auth/logout',
+        body: {'refresh_token': logoutRefreshToken},
+      ) as Map<String, dynamic>;
+
+      print('   Response: $body');
+
+      expect(body, containsPair('success', true));
+      expect(body, containsPair('message', isA<String>()));
+
+      print('✅ Logout successful - token revoked');
+
+      // Verify revoked token doesn't work
+      try {
+        await httpClient(
+          method: 'POST',
+          baseUrl: serverUrl,
+          endpoint: 'api/auth/refresh',
+          body: {'refresh_token': logoutRefreshToken},
+        );
+        fail('Expected refresh to fail with revoked token');
+      } catch (e) {
+        expect(e.toString(), contains('Error in HTTP request'));
+        print('✅ Revoked token correctly rejected');
+      }
+    });
+
+    test('7. httpClient Auto-Refresh - Transparent retry on 401', () async {
+      print('\n🧪 Test 7: httpClient auto-refresh on expired token');
+
+      // Clear state
+      await TokenVault.deleteRefresh('test_user_7');
+      Token.clear();
+
+      // Login to get tokens
+      final loginBody = await httpClient(
+        method: 'POST',
+        baseUrl: serverUrl,
+        endpoint: 'api/auth/login',
+        body: {'username': 'example', 'password': 'abc123'},
+        auth: true,
+        user: 'test_user_7',
+      ) as Map<String, dynamic>;
+
+      // Simulate expired/invalid token
+      Token.accessToken = 'invalid-or-expired-token';
+      Token.accessExp = DateTime.now().subtract(const Duration(minutes: 10));
+
+      // httpClient should detect 401, refresh, and retry
+      final protected = await httpClient(
+        method: 'POST',
+        baseUrl: serverUrl,
+        endpoint: 'api/module1/hello-world',
+        body: {'word': 'AutoRefresh'},
+        auth: true,
+        user: 'test_user_7',
+      ) as Map<String, dynamic>;
+
+      expect(protected, isA<Map>());
+      expect(protected['output'], isA<String>());
+      expect((protected['output'] as String), contains('AutoRefresh'));
+
+      print('✅ httpClient auto-refresh flow succeeded');
+    });
+
+    test('8. httpClient - AuthReLoginException when refresh fails', () async {
+      print('\n🧪 Test 8: AuthReLoginException on refresh failure');
+
+      // Configure invalid refresh token
+      await TokenVault.saveRefresh('test_user_8', 'invalid-refresh-token');
+      Token.accessToken = null;
+      Token.accessExp = null;
+
+      try {
+        await httpClient(
+          method: 'POST',
+          baseUrl: serverUrl,
+          endpoint: 'api/module1/hello-world',
+          body: {'word': 'Fail'},
+          auth: true,
+          user: 'test_user_8',
+        );
+        fail('Expected AuthReLoginException to be thrown');
+      } on AuthReLoginException catch (e) {
+        print('✅ Caught expected AuthReLoginException: $e');
+      }
+    });
+  });
+
+  group('E2E - Concurrency with httpClient', () {
+    test('Multiple concurrent logins', () async {
+      print('\n🧪 Test: Concurrent logins');
+
+      final futures = List.generate(5, (index) {
+        return httpClient(
+          method: 'POST',
+          baseUrl: serverUrl,
+          endpoint: 'api/auth/login',
+          body: {'username': 'example', 'password': 'abc123'},
+          auth: true,
+          user: 'test_user_concurrent_$index',
+        );
+      });
+
+      final responses = await Future.wait(futures);
+
+      var successCount = 0;
+      final tokens = <String>{};
+
+      for (var i = 0; i < responses.length; i++) {
+        try {
+          final body = responses[i] as Map<String, dynamic>;
+          successCount++;
+          tokens.add(body['refresh_token'] as String);
+        } catch (e) {
+          // Ignorar errores en test de concurrencia
+        }
+      }
+
+      print('   Successful requests: $successCount/5');
+      print('   Unique tokens generated: ${tokens.length}');
+
+      expect(successCount, equals(5), reason: 'All concurrent logins should succeed');
+      expect(tokens.length, equals(5), reason: 'Each login should generate unique token');
+
+      print('✅ Concurrency handled correctly');
+    });
+  });
+}
+
+Map<String, String> _loadEnvVariables() {
+  final envFile = File('.env');
+  if (!envFile.existsSync()) {
+    throw Exception('.env file not found');
+  }
+
+  final envVars = <String, String>{};
+  final lines = envFile.readAsLinesSync();
+
+  for (var line in lines) {
+    line = line.trim();
+    if (line.isEmpty || line.startsWith('#')) continue;
+
+    final separatorIndex = line.indexOf('=');
+    if (separatorIndex == -1) continue;
+
+    final key = line.substring(0, separatorIndex).trim();
+    var value = line.substring(separatorIndex + 1).trim();
+
+    // Remove quotes
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value.substring(1, value.length - 1);
+    } else if (value.startsWith("'") && value.endsWith("'")) {
+      value = value.substring(1, value.length - 1);
+    }
+
+    envVars[key] = value;
+  }
+
+  return envVars;
+}
+```
+
+### Testing Patterns with httpClient
+
+#### ✅ Successful Login
+```dart
+final body = await httpClient(
+  method: 'POST',
+  baseUrl: serverUrl,
+  endpoint: 'api/auth/login',
+  body: {'username': 'user', 'password': 'pass'},
+  auth: true,
+  user: 'unique_test_user_id',
+) as Map<String, dynamic>;
+
+expect(body['access_token'], isNotEmpty);
+expect(body['refresh_token'], isNotEmpty);
+```
+
+#### ❌ Login with Invalid Credentials
+```dart
+try {
+  await httpClient(
+    method: 'POST',
+    baseUrl: serverUrl,
+    endpoint: 'api/auth/login',
+    body: {'username': 'user', 'password': 'wrong'},
+    auth: true,
+    user: 'test_user',
+  );
+  fail('Expected login to fail');
+} catch (e) {
+  expect(e.toString(), contains('Error in HTTP request'));
+}
+```
+
+#### 🔄 Refresh Token
+```dart
+final body = await httpClient(
+  method: 'POST',
+  baseUrl: serverUrl,
+  endpoint: 'api/auth/refresh',
+  body: {'refresh_token': refreshToken},
+  // Don't use auth=true for refresh/logout endpoints
+) as Map<String, dynamic>;
+
+expect(body['access_token'], isNotEmpty);
+```
+
+#### 🔒 Protected Endpoint
+```dart
+final body = await httpClient(
+  method: 'POST',
+  baseUrl: serverUrl,
+  endpoint: 'api/protected/resource',
+  body: {'data': 'value'},
+  auth: true,
+  user: 'test_user',  // Same user from login
+) as Map<String, dynamic>;
+
+expect(body, containsPair('result', isA<String>()));
+```
+
+#### 🚫 Protected Endpoint without Token
+```dart
+try {
+  await httpClient(
+    method: 'POST',
+    baseUrl: serverUrl,
+    endpoint: 'api/protected/resource',
+    body: {'data': 'value'},
+    // Without auth=true, no token is attached
+  );
+  fail('Expected request to fail without token');
+} catch (e) {
+  expect(e.toString(), contains('Error in HTTP request'));
+}
+```
+
+### View Complete Tests
+
+For complete E2E test implementations with `httpClient`, see:
+- `template/test/e2e/auth_flow_test.dart`: 25 authentication flow tests
+- `template/test/e2e/health_check_test.dart`: Health and CORS tests
 
 ---
 
-## Seguridad y Mejores Prácticas
+## Security and Best Practices
 
-### 🔒 Configuración de Seguridad
+### 🔒 Security Configuration
 
 1. **JWT Secret**: 
-   - Usar clave fuerte (mínimo 32 bytes aleatorios)
-   - Nunca commitear en repositorio
-   - Rotar periódicamente en producción
+   - Use strong key (minimum 32 random bytes)
+   - Never commit to repository
+   - Rotate periodically in production
 
 2. **Password Hashing**:
-   - Bcrypt cost factor: 12 (ajustar según hardware)
-   - Nunca almacenar contraseñas en texto plano
-   - Implementar políticas de contraseñas fuertes
+   - Bcrypt cost factor: 12 (adjust based on hardware)
+   - Never store passwords in plain text
+   - Implement strong password policies
 
 3. **Token Storage**:
-   - Guardar solo hashes SHA-256 en DB
-   - Nunca loggear tokens completos
-   - Implementar token rotation para refresh tokens
+   - Store only SHA-256 hashes in DB
+   - Never log complete tokens
+   - Implement token rotation for refresh tokens
 
 4. **HTTPS**:
-   - SIEMPRE usar HTTPS en producción
-   - Habilitar HSTS
-   - Configurar CORS apropiadamente
+   - ALWAYS use HTTPS in production
+   - Enable HSTS
+   - Configure CORS appropriately
 
-### ⚡ Configuraciones Recomendadas
+### ⚡ Recommended Configurations
 
 ```env
-# Producción
+# Production
 JWT_SECRET=<generated-with-openssl-rand-base64-32>
-JWT_EXPIRES_IN=900           # 15 minutos
-REFRESH_TOKEN_DAYS=7         # 7 días
-BCRYPT_COST=12               # Ajustar según hardware
+JWT_EXPIRES_IN=900           # 15 minutes
+REFRESH_TOKEN_DAYS=7         # 7 days
+BCRYPT_COST=12               # Adjust based on hardware
 
-# Desarrollo
+# Development
 JWT_SECRET=dev-secret-key
-JWT_EXPIRES_IN=3600          # 1 hora (más cómodo para dev)
-REFRESH_TOKEN_DAYS=30        # 30 días
+JWT_EXPIRES_IN=3600          # 1 hour (more comfortable for dev)
+REFRESH_TOKEN_DAYS=30        # 30 days
 ```
 
-### 📊 Monitoreo
+### 📊 Monitoring
 
-Implementar logging de:
-- Intentos de login fallidos
+Implement logging of:
+- Failed login attempts
 - Token refreshes
 - Logouts
-- Tokens expirados/revocados
+- Expired/revoked tokens
 
 ### 🛡️ Rate Limiting
 
-Considerar implementar rate limiting para:
-- `/api/auth/login`: Max 5 intentos/minuto
-- `/api/auth/refresh`: Max 10 intentos/minuto
+Consider implementing rate limiting for:
+- `/api/auth/login`: Max 5 attempts/minute
+- `/api/auth/refresh`: Max 10 attempts/minute
 
 ### 🔄 Token Rotation
 
-**Ventajas**:
-- Mayor seguridad (tokens de un solo uso)
-- Mejor detección de robo de tokens
-- Audit trail completo
+**Advantages**:
+- Higher security (single-use tokens)
+- Better token theft detection
+- Complete audit trail
 
-**Desventajas**:
-- Complejidad adicional
-- Requiere manejo cuidadoso en cliente
+**Disadvantages**:
+- Additional complexity
+- Requires careful client-side handling
 
-**Recomendación**: Habilitar en producción, deshabilitar en desarrollo.
+**Recommendation**: Enable in production, disable in development.
 
 ```dart
-// En RefreshUseCase
+// In RefreshUseCase
 RefreshUseCase({
   required super.input,
-  this.enableRotation = true,  // Cambiar a true en producción
+  this.enableRotation = true,  // Change to true in production
 });
 ```
 
@@ -1286,40 +2041,30 @@ RefreshUseCase({
 ## Troubleshooting
 
 ### Error: "Token has expired"
-- **Causa**: Access token expiró
-- **Solución**: Llamar a `/api/auth/refresh` con el refresh token
+- **Cause**: Access token expired
+- **Solution**: Call `/api/auth/refresh` with refresh token
 
 ### Error: "Refresh token not found or has been revoked"
-- **Causa**: Refresh token inválido o revocado
-- **Solución**: Usuario debe hacer login nuevamente
+- **Cause**: Invalid or revoked refresh token
+- **Solution**: User must login again
 
 ### Error: "Invalid username or password"
-- **Causa**: Credenciales incorrectas
-- **Solución**: Verificar username/password, revisar DB
+- **Cause**: Incorrect credentials
+- **Solution**: Verify username/password, check DB
 
 ### Error: "Connection to PostgreSQL failed"
-- **Causa**: DB no disponible
-- **Solución**: Verificar que PostgreSQL esté corriendo y credenciales correctas
+- **Cause**: DB unavailable
+- **Solution**: Verify PostgreSQL is running and credentials are correct
 
 ---
 
-## Recursos Adicionales
+## Additional Resources
 
-- [JWT.io](https://jwt.io) - Debugger de JWT
+- [JWT.io](https://jwt.io) - JWT Debugger
 - [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
 - [modular_api Documentation](../README.md)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 
 ---
 
-## Changelog
-
-- **v1.0.0** (2025-11-03): Guía inicial completa
-  - Login, Refresh, Logout, Logout All
-  - Token rotation opcional
-  - Flutter integration
-  - Tests E2E
-
----
-
-**¿Preguntas o problemas?** Abre un issue en el repositorio.
+**Questions or problems?** Open an issue in the repository.

@@ -48,12 +48,20 @@ Example response (HelloOutput):
 
 ## 📖 Documentation
 
-Comprehensive guides are available in the repository:
+**Start here**: [doc/INDEX.md](doc/INDEX.md) — Complete documentation index and vertical development guide
 
+### Quick Links
+
+Core guides for vertical feature development:
+
+- **[doc/INDEX.md](doc/INDEX.md)** — Entry point: vertical development flow from DB to UI
 - **[AGENTS.md](AGENTS.md)** — Framework overview and implementation guide (optimized for AI assistants)
-- **[docs/usecase_dto_guide.md](docs/usecase_dto_guide.md)** — Complete guide for creating Input/Output DTOs
-- **[docs/usecase_implementation.md](docs/usecase_implementation.md)** — Step-by-step guide for implementing UseCases
-- **[docs/testing_guide.md](docs/testing_guide.md)** — Quick reference for testing with `useCaseTestHandler`
+- **[doc/usecase_dto_guide.md](doc/usecase_dto_guide.md)** — Creating Input/Output DTOs
+- **[doc/usecase_implementation.md](doc/usecase_implementation.md)** — Implementing UseCases with business logic
+- **[doc/testing_guide.md](doc/testing_guide.md)** — Testing UseCases with `useCaseTestHandler`
+- **[doc/http_client_guide.md](doc/http_client_guide.md)** — Using httpClient in Flutter and Dart apps
+- **[doc/authentication_guide.md](doc/authentication_guide.md)** — Token management and storage adapters
+- **[doc/auth_implementation_guide.md](doc/auth_implementation_guide.md)** — Complete JWT authentication system
 
 ---
 
@@ -62,6 +70,14 @@ Comprehensive guides are available in the repository:
 - ✅ `UseCase<I extends Input, O extends Output>` base classes and DTOs (`Input`/`Output`).
 - 🧩 `useCaseHttpHandler()` adapter: accepts a factory `UseCase Function(Map<String, dynamic>)`
   and returns a Shelf `Handler`.
+- 🔐 **Authentication & HTTP Client**:
+  - `httpClient()` — intelligent HTTP client with automatic authentication, token management, and auto-refresh on 401
+  - `Token` — in-memory session management (access tokens, expiration checking)
+  - `TokenVault` — configurable persistent storage for refresh tokens (with adapters for memory, file, and custom storage)
+  - `JwtHelper` — JWT generation and validation utilities
+  - `PasswordHasher` — bcrypt password hashing and verification
+  - `TokenHasher` — SHA-256 token hashing for secure storage
+  - `AuthReLoginException` — specialized exception for authentication flow control
 - 🧱 Included middlewares:
   - `cors()` — simple CORS support.
   - `apiKey()` — header-based authentication; the key is read from the `API_KEY` environment
@@ -110,7 +126,7 @@ In `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  modular_api: ^0.0.6
+  modular_api: ^0.0.7
 ```
 
 Or from the command line:
@@ -119,6 +135,53 @@ Or from the command line:
 dart pub add modular_api
 dart pub get
 ```
+
+---
+
+## 🔐 Authentication with httpClient
+
+The intelligent `httpClient` simplifies authentication by automatically managing tokens:
+
+```dart
+import 'package:modular_api/modular_api.dart';
+
+Future<void> authenticatedFlow() async {
+  const baseUrl = 'http://localhost:8080';
+  
+  // Login - httpClient automatically captures and stores tokens
+  final loginResponse = await httpClient(
+    method: 'POST',
+    baseUrl: baseUrl,
+    endpoint: 'api/auth/login',
+    body: {'username': 'user', 'password': 'pass'},
+    auth: true,
+    user: 'user123',  // Unique user identifier
+  ) as Map<String, dynamic>;
+  
+  print('Access token: ${loginResponse['access_token']}');
+  
+  // Protected request - httpClient automatically:
+  // 1. Attaches Bearer token
+  // 2. Retries with refresh token on 401
+  // 3. Throws AuthReLoginException if refresh fails
+  try {
+    final profile = await httpClient(
+      method: 'POST',
+      baseUrl: baseUrl,
+      endpoint: 'api/users/profile',
+      body: {'user_id': 123},
+      auth: true,
+      user: 'user123',
+    );
+    print('Profile: $profile');
+  } on AuthReLoginException {
+    // Session expired, redirect to login
+    print('Please log in again');
+  }
+}
+```
+
+See **[docs/http_client_guide.md](docs/http_client_guide.md)** for complete examples and configuration.
 
 ---
 
