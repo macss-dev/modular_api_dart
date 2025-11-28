@@ -4,9 +4,7 @@ Future<void> main(List<String> args) async {
   final api = ModularApi(basePath: '/api');
 
   // POST api/module1/hello-world
-  api.module('module1', (m) {
-    m.usecase('hello-world', HelloWorld.factory);
-  });
+  api.module('module1', module1Builder);
 
   /// Get the port from the environment (.env) file.
   /// No default is provided; the PORT environment variable must be set.
@@ -17,8 +15,13 @@ Future<void> main(List<String> args) async {
   await api.serve(
     port: port,
   );
+}
 
-  print('Docs on http://localhost:$port/docs');
+/// Module 1 builder: defines the use cases for module1.
+/// build in his own file in a real project.
+/// /lib/modules/module1/module1_builder.dart
+void module1Builder(ModuleBuilder m) {
+  m.usecase('hello-world', HelloWorld.factory);
 }
 
 /// Input for HelloWorld: a single word used in the greeting.
