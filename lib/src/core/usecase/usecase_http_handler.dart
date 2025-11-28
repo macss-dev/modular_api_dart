@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
@@ -32,7 +33,9 @@ Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
       // 4. Serialize the response and return
       return Response.ok(jsonEncode(useCase.toJson()), headers: jsonHeaders);
     } catch (e) {
-      // Here you can log the error
+      stderr.writeln(
+        'useCaseHttpHandler Error: $e'
+      );
       return Response(
         500,
         headers: jsonHeaders,

@@ -68,6 +68,12 @@ class ModularApi {
       ip ?? InternetAddress.anyIPv4,
       port,
     );
+    
+    /// Print info
+    stdout.writeln('Docs on http://localhost:$port/docs');
+    stdout.writeln('health on http://localhost:$port/health');
+
+    /// Return server
     return server;
   }
 }

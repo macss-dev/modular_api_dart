@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:service_client/service_client.dart';
 import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
-import 'package:modular_api/modular_api.dart';
 
 /// End-to-end tests for the complete authentication flow
 /// Tests run against a running server and a real database
