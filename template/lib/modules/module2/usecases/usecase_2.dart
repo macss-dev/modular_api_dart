@@ -23,7 +23,7 @@ class UpperInput implements Input {
   };
 }
 
-class UpperOutput implements Output {
+class UpperOutput extends Output {
   final String result;
 
   UpperOutput({required this.result});

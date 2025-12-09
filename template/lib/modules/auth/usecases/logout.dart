@@ -35,7 +35,7 @@ class LogoutInput implements Input {
 
 /// Output DTO for logout operation
 /// Returns a success message
-class LogoutOutput implements Output {
+class LogoutOutput extends Output {
   final String message;
   final bool success;
 

@@ -8,7 +8,12 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
-  modular_api: ^0.0.7
+  modular_api:
+    path: ../
+  # change to lastest version
+  # service_client: ^lastest_version
+  service_client:
+    path: ../../service_client
   postgres: ^3.0.0
   
 dev_dependencies:

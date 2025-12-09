@@ -22,7 +22,7 @@ class LowerInput implements Input {
   };
 }
 
-class LowerOutput implements Output {
+class LowerOutput extends Output {
   final String result;
 
   LowerOutput({required this.result});

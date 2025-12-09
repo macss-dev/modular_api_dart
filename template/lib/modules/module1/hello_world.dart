@@ -26,7 +26,7 @@ class HelloInput implements Input {
 }
 
 /// Output for HelloWorld: the composed greeting.
-class HelloOutput implements Output {
+class HelloOutput extends Output {
   final String output;
 
   HelloOutput({required this.output});

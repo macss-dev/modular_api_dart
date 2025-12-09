@@ -42,7 +42,7 @@ class LoginInput implements Input {
 }
 
 /// Output for successful login.
-class LoginOutput implements Output {
+class LoginOutput extends Output {
   final String accessToken;
   final String tokenType;
   final int expiresIn;

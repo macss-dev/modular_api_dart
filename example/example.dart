@@ -3,12 +3,12 @@ import 'package:modular_api/modular_api.dart';
 Future<void> main(List<String> args) async {
   final api = ModularApi(basePath: '/api');
 
-  // POST api/module1/hello-world
+  /// POST api/module1/hello-world
   api.module('module1', module1Builder);
 
   /// Get the port from the environment (.env) file.
   /// No default is provided; the PORT environment variable must be set.
-  /// try final port = 1234 to use a fixed port.
+  /// try: `final port = 1234;` to use a fixed port.
   final port = Env.getInt('PORT');
 
   /// Start the server
@@ -47,7 +47,7 @@ class HelloInput implements Input {
 }
 
 /// Output for HelloWorld: the composed greeting.
-class HelloOutput implements Output {
+class HelloOutput extends Output {
   final String output;
 
   HelloOutput({this.output = ''});

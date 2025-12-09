@@ -31,7 +31,7 @@ class MultiplyInput implements Input {
   };
 }
 
-class MultiplyOutput implements Output {
+class MultiplyOutput extends Output {
   final num result;
 
   MultiplyOutput({required this.result});

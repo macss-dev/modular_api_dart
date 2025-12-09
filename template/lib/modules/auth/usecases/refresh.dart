@@ -31,7 +31,7 @@ class RefreshInput implements Input {
 }
 
 /// Output for refresh token operation.
-class RefreshOutput implements Output {
+class RefreshOutput extends Output {
   final String accessToken;
   final String tokenType;
   final int expiresIn;

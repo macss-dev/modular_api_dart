@@ -32,7 +32,7 @@ class SumInput implements Input {
   };
 }
 
-class SumOutput implements Output {
+class SumOutput extends Output {
   final num result;
 
   SumOutput({required this.result});

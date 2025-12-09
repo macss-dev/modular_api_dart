@@ -36,6 +36,4 @@ Future<void> main(List<String> args) async {
 
   /// OpenAPI docs URL
   /// You can access the docs at http://localhost:<port>/docs
-  stdout.writeln('Docs on http://localhost:$port/docs');
-  stdout.writeln('Health check on http://localhost:$port/health');
 }

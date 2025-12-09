@@ -35,7 +35,7 @@ class LogoutAllInput implements Input {
 
 /// Output DTO for logout_all operation
 /// Returns the count of revoked tokens
-class LogoutAllOutput implements Output {
+class LogoutAllOutput extends Output {
   final String message;
   final bool success;
   final int revokedCount;
