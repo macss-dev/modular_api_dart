@@ -47,4 +47,9 @@ abstract class Output {
   /// Schema
   /// Required for OpenApi specification
   Map<String, dynamic> toSchema();
+
+  /// HTTP status code to return.
+  /// Override this getter to return a custom status code.
+  /// Default is 200 (OK).
+  int get statusCode => 200;
 }

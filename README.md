@@ -68,6 +68,7 @@ Core guides for vertical feature development:
 ## ✨ Features
 
 - ✅ `UseCase<I extends Input, O extends Output>` base classes and DTOs (`Input`/`Output`).
+- 🎯 **Custom HTTP Status Codes**: Output DTOs can override `statusCode` getter to return appropriate HTTP status codes (200, 201, 400, 401, 404, 422, 500, etc.)
 - 🧩 `useCaseHttpHandler()` adapter: accepts a factory `UseCase Function(Map<String, dynamic>)`
   and returns a Shelf `Handler`.
 - 🔐 **Authentication & HTTP Client**:

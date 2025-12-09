@@ -162,6 +162,85 @@ When implementing `toSchema()`, use these mappings:
 
 ---
 
+## Custom HTTP Status Codes (v0.0.8+)
+
+Output DTOs can specify custom HTTP status codes by overriding the `statusCode` getter.
+
+**Default Behavior:**
+- All successful responses return HTTP 200 by default
+- Override `statusCode` getter to return different codes
+
+**Example: Error Response with Custom Status Code**
+```dart
+class ApiResponse extends Output {
+  final int errorCode;
+  final String message;
+  final bool success;
+  
+  ApiResponse({
+    required this.errorCode,
+    required this.message,
+    required this.success,
+  });
+  
+  factory ApiResponse.fromJson(Map<String, dynamic> json) {
+    return ApiResponse(
+      errorCode: json['errorCode'] as int,
+      message: json['message'] as String,
+      success: json['success'] as bool,
+    );
+  }
+  
+  @override
+  Map<String, dynamic> toJson() => {
+    'errorCode': errorCode,
+    'message': message,
+    'success': success,
+  };
+  
+  @override
+  Map<String, dynamic> toSchema() => {
+    'type': 'object',
+    'properties': {
+      'errorCode': {'type': 'integer'},
+      'message': {'type': 'string'},
+      'success': {'type': 'boolean'},
+    },
+    'required': ['errorCode', 'message', 'success'],
+  };
+  
+  /// Map error codes to HTTP status codes
+  @override
+  int get statusCode {
+    if (success) return 200;
+    return switch (errorCode) {
+      1001 => 400, // Bad Request
+      1002 || 1003 => 401, // Unauthorized
+      1004 => 403, // Forbidden
+      1005 => 404, // Not Found
+      1006 => 422, // Unprocessable Entity
+      1007 => 503, // Service Unavailable
+      _ => 500, // Internal Server Error
+    };
+  }
+}
+```
+
+**Common HTTP Status Code Mappings:**
+| Code | Meaning | Use Case |
+|------|---------|----------|
+| 200 | OK | Successful operation |
+| 201 | Created | Resource created |
+| 400 | Bad Request | Invalid input data |
+| 401 | Unauthorized | Authentication required/failed |
+| 403 | Forbidden | Insufficient permissions |
+| 404 | Not Found | Resource not found |
+| 422 | Unprocessable Entity | Validation errors |
+| 500 | Internal Server Error | Unexpected errors |
+| 503 | Service Unavailable | External service down |
+
+---
+
 ## Authentication & HTTP Client (v0.0.7+)
 
 ### Single-User Design

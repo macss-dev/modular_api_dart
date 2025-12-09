@@ -1,4 +1,31 @@
 # Changelog
+All notable changes to this project will be documented in this file.
+
+The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
+and the project adheres to [Semantic Versioning](https://semver.org/).
+
+## [0.0.8] - 2025-12-04
+### Added
+- **Output.statusCode** — customizable HTTP status code for UseCase responses:
+  - `Output` abstract class now includes `int get statusCode => 200;` getter
+  - Override in your Output DTO to return custom HTTP status codes (e.g., 201 for created, 400 for bad request)
+  - `useCaseHttpHandler` uses `output.statusCode` instead of hardcoded 200
+  - Enables proper RESTful responses without modifying the HTTP handler
+
+### Changed
+- **Output DTOs** now use `extends Output` instead of `implements Output` to inherit the default `statusCode` getter
+- Example and template Output classes updated to extend Output
+
+### Migration Guide
+If you have existing Output DTOs using `implements Output`, change them to `extends Output`:
+```dart
+// Before
+class MyOutput implements Output { ... }
+
+// After
+class MyOutput extends Output { ... }
+```
+Alternatively, add the statusCode getter manually: `@override int get statusCode => 200;`
 
 ## [0.0.7] - 2025-11-04
 ### Added
@@ -72,12 +99,6 @@
 ## [0.0.3] - 2025-10-23
 ### Added
 - Automatic health endpoint: the server registers `GET /health` which responds with `ok` on startup. Implemented in `modular_api.dart` (exposes `_root.get('/health', (Request request) => Response.ok('ok'));`).
-
-
-All notable changes to this project will be documented in this file.
-
-The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
-and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.0.2] - 2025-10-21
 ### Changed

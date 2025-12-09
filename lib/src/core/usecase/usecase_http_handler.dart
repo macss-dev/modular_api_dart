@@ -30,8 +30,13 @@ Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
       // 3. Execute the use case
       await useCase.execute();
 
-      // 4. Serialize the response and return
-      return Response.ok(jsonEncode(useCase.toJson()), headers: jsonHeaders);
+      // 4. Serialize the response and return with the appropriate status code
+      final statusCode = useCase.output.statusCode;
+      return Response(
+        statusCode,
+        headers: jsonHeaders,
+        body: jsonEncode(useCase.toJson()),
+      );
     } catch (e) {
       stderr.writeln(
         'useCaseHttpHandler Error: $e'
