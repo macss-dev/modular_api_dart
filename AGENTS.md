@@ -241,6 +241,119 @@ class ApiResponse extends Output {
 
 ---
 
+## OAuth2 Client Credentials (v0.0.9+)
+
+### Built-in OAuth2 Authorization Server
+
+The framework provides complete OAuth2 support with Client Credentials grant type for machine-to-machine authentication.
+
+**Key Features:**
+- `OAuthService` — JWT token generation and validation
+- `OAuthClient` — Client registration with credentials and scopes
+- `bearer()` middleware — Token validation and scope enforcement
+- **Auto-mounting** — `/oauth/token` endpoint automatically registered
+- HS256 (HMAC-SHA256) JWT signing
+- Scope-based authorization per usecase
+
+### Quick Setup
+
+```dart
+// 1. Create OAuth service
+final oauthService = OAuthService(
+  jwtSecret: Env.getString('JWT_SECRET'),
+  issuer: 'your-domain.com',
+  audience: 'your-domain.com',
+  tokenTtlSeconds: 86400, // 24 hours
+);
+
+// 2. Register client
+oauthService.registerClient(
+  OAuthClient(
+    clientId: 'client-id',
+    clientSecret: 'secret',
+    allowedScopes: ['read', 'write'],
+    name: 'Client Name',
+    isActive: true,
+  ),
+);
+
+// 3. Create API with OAuth (auto-mounts /oauth/token)
+final api = ModularApi(
+  basePath: '/api',
+  oauthService: oauthService,
+);
+
+// 4. Protect usecases with scopes
+api.module('resources', (m) {
+  m.usecase(
+    'create',
+    CreateResource.fromJson,
+    requiredScopes: ['write'],
+  );
+});
+```
+
+### OAuth2 Flow
+
+**1. Obtain Token:**
+```bash
+curl -X POST http://localhost:8080/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "client-id",
+    "client_secret": "secret",
+    "scope": "read write"
+  }'
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGc...",
+  "token_type": "Bearer",
+  "expires_in": 86400,
+  "scope": "read write"
+}
+```
+
+**2. Use Token:**
+```bash
+curl -X POST http://localhost:8080/api/resources/create \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Resource 1"}'
+```
+
+### Features
+
+- ✅ **Auto-mounting**: `/oauth/token` endpoint registered automatically when `oauthService` is provided
+- ✅ **JWT Tokens**: HS256 signed with claims: iss, aud, sub, client_id, scopes, iat, exp
+- ✅ **Scope Validation**: Per-usecase `requiredScopes` parameter
+- ✅ **401/403 Responses**: Automatic unauthorized and forbidden responses
+- ✅ **405 Support**: Proper HTTP method validation (POST required)
+
+### Environment Variables
+
+```env
+JWT_SECRET=<generate-with-openssl-rand-base64-64>
+JWT_ISSUER=your-domain.com
+JWT_AUDIENCE=your-domain.com
+OAUTH_CLIENT_ID=client-id
+OAUTH_CLIENT_SECRET=<generate-with-openssl-rand-base64-32>
+```
+
+**Generate secure secrets:**
+```bash
+# JWT Secret (64 bytes)
+openssl rand -base64 64
+
+# Client Secret (32 bytes)
+openssl rand -base64 32
+```
+
+---
+
 ## Authentication & HTTP Client (v0.0.7+)
 
 ### Single-User Design
@@ -695,7 +808,6 @@ dart compile exe bin/main.dart -o build/server
 - **[doc/auth_implementation_guide.md](doc/auth_implementation_guide.md)** — Complete JWT auth system
 
 **Additional Resources:**
-- `template/` folder — Full example project with multiple modules
 - `example/` folder — Minimal runnable example
 
 ---

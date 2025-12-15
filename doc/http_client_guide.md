@@ -1089,7 +1089,6 @@ await TokenVault.deleteRefresh();
 ```
 
 For more examples, see:
-- [E2E Tests](../template/test/e2e/auth_flow_test.dart)
 - [Authentication Implementation Guide](./auth_implementation_guide.md)
 - [Testing Guide](./testing_guide.md)
 
@@ -1099,5 +1098,4 @@ For more examples, see:
 
 If you encounter problems not covered in this guide:
 1. Check the [Troubleshooting](#troubleshooting) section
-2. Review E2E test examples in `template/test/e2e/`
-3. Open an issue on GitHub with details about your setup and error messages
+2. Open an issue on GitHub with details about your setup and error messages

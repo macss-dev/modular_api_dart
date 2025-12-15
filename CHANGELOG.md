@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+### Documentation
+
+## [0.0.9] - 2025-12-15
+### Added
+- **OAuth2 Client Credentials Support** — full OAuth2 implementation:
+  - `OAuthService` — manages client authentication and JWT token generation
+  - `OAuthClient` — represents registered clients with credentials and scopes
+  - `TokenRequest`, `TokenResponse`, `TokenErrorResponse` — OAuth2 data structures
+  - `AccessToken` — decoded JWT with scope validation methods
+  - `createOAuthTokenHandler` — POST /oauth/token endpoint handler
+  - `bearer()` middleware — validates Bearer tokens and enforces scopes
+  - `requireAuth()` middleware — marks routes as requiring authentication
+  - HS256 (HMAC-SHA256) JWT signing algorithm
+  - Scope-based authorization for protected endpoints
+  - Follows RFC 6749 OAuth2 specification
+
+### Changed
+- Exported auth utilities: `JwtHelper`, `hashPassword`, `verifyPassword`, `hashToken`
+- Updated exports to include OAuth2 types and services
+
+### Removed
+- **Removed `template/` folder** — Simplified project structure by removing the full example template
+  - Template project has been removed to reduce repository complexity
+  - Only the minimal `example/` folder remains for quick reference
+  - Previous template code included extensive examples, tests, and infrastructure that were redundant
+
+### Documentation
+- Added comprehensive OAuth2 guides and examples
+- Updated AGENTS.md with OAuth2 usage patterns
+- Updated all documentation to remove references to `template/` folder
+- Simplified examples to focus on the minimal `example/` implementation
+- Cleaned up README.md, AGENTS.md, and guides to reflect simplified structure
+
 ## [0.0.8] - 2025-12-04
 ### Added
 - **Output.statusCode** — customizable HTTP status code for UseCase responses:

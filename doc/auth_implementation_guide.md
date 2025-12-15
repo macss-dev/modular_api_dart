@@ -776,13 +776,13 @@ class LoginUseCase extends UseCase<LoginInput, LoginOutput> {
 #### 3.2 Refresh (`lib/modules/auth/usecases/refresh.dart`)
 
 ```dart
-// Similar structure to Login, see template/lib/modules/auth/usecases/refresh.dart
+// Similar structure to Login
 // Implements optional token rotation and refresh token validation
 ```
 
 #### 3.3 Logout and Logout All
 
-See complete implementations in the template.
+Implement these following similar patterns to Login and Refresh.
 
 ### Step 4: Register Module
 
@@ -1944,12 +1944,6 @@ try {
   expect(e.toString(), contains('Error in HTTP request'));
 }
 ```
-
-### View Complete Tests
-
-For complete E2E test implementations with `httpClient`, see:
-- `template/test/e2e/auth_flow_test.dart`: 25 authentication flow tests
-- `template/test/e2e/health_check_test.dart`: Health and CORS tests
 
 ---
 

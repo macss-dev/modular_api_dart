@@ -38,9 +38,7 @@ Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
         body: jsonEncode(useCase.toJson()),
       );
     } catch (e) {
-      stderr.writeln(
-        'useCaseHttpHandler Error: $e'
-      );
+      stderr.writeln('useCaseHttpHandler Error: $e');
       return Response(
         500,
         headers: jsonHeaders,

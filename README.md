@@ -71,7 +71,12 @@ Core guides for vertical feature development:
 - 🎯 **Custom HTTP Status Codes**: Output DTOs can override `statusCode` getter to return appropriate HTTP status codes (200, 201, 400, 401, 404, 422, 500, etc.)
 - 🧩 `useCaseHttpHandler()` adapter: accepts a factory `UseCase Function(Map<String, dynamic>)`
   and returns a Shelf `Handler`.
-- 🔐 **Authentication & HTTP Client**:
+- 🔐 **OAuth2 & Authentication**:
+  - **OAuth2 Client Credentials**: Built-in OAuth2 Authorization Server with Client Credentials grant type
+  - **JWT Tokens**: HS256 (HMAC-SHA256) signed tokens with configurable TTL
+  - **Bearer Token Middleware**: Automatic token validation and scope-based authorization
+  - **Auto-mounting**: OAuth token endpoint (`POST /oauth/token`) automatically registered when `oauthService` is provided
+  - **Scope Protection**: Per-usecase scope requirements via `requiredScopes` parameter
   - `httpClient()` — intelligent HTTP client with automatic authentication, token management, and auto-refresh on 401
   - `Token` — in-memory session management (access tokens, expiration checking)
   - `TokenVault` — configurable persistent storage for refresh tokens (with adapters for memory, file, and custom storage)
@@ -83,6 +88,7 @@ Core guides for vertical feature development:
   - `cors()` — simple CORS support.
   - `apiKey()` — header-based authentication; the key is read from the `API_KEY` environment
     variable (via `Env`).
+  - `bearer()` — OAuth2 Bearer token validation with scope checking.
 - 📄 OpenAPI / Swagger helpers:
   - `OpenApi.init(title)` and `OpenApi.docs` — generate an OpenAPI spec from registered
     usecases (uses DTO `toSchema()`), and provide a Swagger UI `Handler`.
@@ -117,7 +123,7 @@ Core guides for vertical feature development:
   }
   ```
 
-  See `template/lib/db/db_client.dart` for convenience factories and `NOTICE` for provenance details.
+  See `NOTICE` for provenance details.
 
 ---
 
@@ -127,7 +133,7 @@ In `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  modular_api: ^0.0.7
+  modular_api: ^0.0.10
 ```
 
 Or from the command line:
@@ -136,6 +142,93 @@ Or from the command line:
 dart pub add modular_api
 dart pub get
 ```
+
+---
+
+## 🔐 OAuth2 Client Credentials
+
+The framework provides built-in OAuth2 Authorization Server support with Client Credentials grant type, JWT tokens, and automatic Bearer token validation.
+
+### Quick Setup
+
+```dart
+import 'package:modular_api/modular_api.dart';
+
+Future<void> main() async {
+  // 1. Create OAuth2 service
+  final oauthService = OAuthService(
+    jwtSecret: Env.getString('JWT_SECRET'),
+    issuer: 'your-domain.com',
+    audience: 'your-domain.com',
+    tokenTtlSeconds: 86400, // 24 hours
+  );
+
+  // 2. Register OAuth2 clients
+  oauthService.registerClient(
+    OAuthClient(
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+      allowedScopes: ['read', 'write'],
+      name: 'Client Name',
+      isActive: true,
+    ),
+  );
+
+  // 3. Create API with OAuth2 (auto-mounts /oauth/token endpoint)
+  final api = ModularApi(
+    basePath: '/api',
+    oauthService: oauthService,
+  );
+
+  // 4. Protect specific usecases with scopes
+  api.module('resources', (m) {
+    m.usecase(
+      'create',
+      CreateResource.fromJson,
+      requiredScopes: ['write'],  // Requires 'write' scope
+    );
+  });
+
+  await api.serve(port: 8080);
+}
+```
+
+### OAuth2 Flow
+
+```bash
+# 1. Obtain access token
+curl -X POST http://localhost:8080/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "client-id",
+    "client_secret": "client-secret",
+    "scope": "read write"
+  }'
+
+# Response:
+# {
+#   "access_token": "eyJhbGc...",
+#   "token_type": "Bearer",
+#   "expires_in": 86400,
+#   "scope": "read write"
+# }
+
+# 2. Use access token to call protected endpoints
+curl -X POST http://localhost:8080/api/resources/create \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Resource 1"}'
+```
+
+### Features
+
+- ✅ **Client Credentials Grant**: OAuth2 standard flow for machine-to-machine authentication
+- ✅ **JWT Tokens**: HS256 signed tokens with standard claims (iss, aud, sub, iat, exp, scopes)
+- ✅ **Auto-mounting**: `/oauth/token` endpoint automatically registered
+- ✅ **Scope Validation**: Per-usecase scope requirements
+- ✅ **Bearer Middleware**: Automatic token validation with 401/403 responses
+- ✅ **405 Support**: Proper HTTP method validation (POST required for token endpoint)
 
 ---
 
@@ -211,15 +304,11 @@ Open `http://localhost:<port>/docs` to view the UI.
 
 ---
 
-## 🧱 Modular examples
+## 🧱 Example
 
-There are two example flavours included in this repository:
+This repository includes a minimal runnable example:
 
-- `example/` — a minimal, simplified runnable example. Check `example/example.dart` and
-  `template/lib/modules/module1/hello_world.dart` for a concrete `UseCase` + DTO example.
-- `template/` — a fuller modular architecture template showing how to structure modules,
-  repositories and tests for larger projects. See the `template/` folder for a complete
-  starter layout (modules `module1`, `module2`, `module3`, and convenience DB clients).
+- `example/` — minimal, simplified runnable example. Check `example/example.dart` for a concrete `UseCase` + DTO example.
 
 ---
 
