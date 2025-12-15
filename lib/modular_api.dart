@@ -17,17 +17,9 @@ export 'src/core/usecase/usecase_test_handler.dart' show useCaseTestHandler;
 export 'src/middlewares/cors.dart' show exampleCorsMiddleware;
 export 'src/middlewares/apikey.dart' show exampleApiKeyMiddleware;
 
-
-export 'src/clients/db/db_client.dart' show DbClient;
-
 // OpenAPI
 export 'src/openapi/openapi.dart' show OpenApi;
 
 // utils
 export 'src/utils/env.dart' show Env;
 export 'src/utils/get_local_ip.dart' show getLocalIp;
-
-// Auth utilities
-export 'src/auth/jwt_helper.dart' show JwtHelper, JwtException;
-export 'src/auth/password_hasher.dart' show PasswordHasher;
-export 'src/auth/token_hasher.dart' show TokenHasher;

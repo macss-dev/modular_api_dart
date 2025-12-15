@@ -12,8 +12,9 @@ dependencies:
     path: ../
   # change to lastest version
   # service_client: ^lastest_version
-  service_client:
-    path: ../../service_client
+  # service_client:
+  #   path: ../../service_client
+  service_client: ^0.1.0
   postgres: ^3.0.0
   
 dev_dependencies:

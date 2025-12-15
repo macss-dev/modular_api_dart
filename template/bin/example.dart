@@ -1,8 +1,4 @@
-import 'dart:io';
-import 'package:example/middlewares/auth_middleware.dart';
-import 'package:example/modules/auth/auth_builder.dart';
 import 'package:modular_api/modular_api.dart';
-import 'package:example/modules/module1/hello_world.dart';
 import 'package:example/modules/module2/module2_builder.dart';
 import 'package:example/modules/module3/module3_builder.dart';
 
@@ -17,16 +13,16 @@ Future<void> main(List<String> args) async {
   api.use(exampleCorsMiddleware());
 
   // Auth middleware (will be applied to all routes except public ones)
-  api.use(authMiddleware());
+  // api.use(authMiddleware());
 
   // Authentication module (public routes handled by authMiddleware)
-  api.module('auth', authBuilder);
+  // api.module('auth', authBuilder);
 
   // Protected modules (require access token)
   // POST api/module1/hello-world (protected)
-  api.module('module1', (m) {
-    m.usecase('hello-world', HelloWorld.fromJson);
-  });
+  // api.module('module1', (m) {
+  //   m.usecase('hello-world', HelloWorld.fromJson);
+  // });
 
   // Modular builder from external file (protected)
   api.module('module2', module2Builder);
