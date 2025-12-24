@@ -241,6 +241,85 @@ class ApiResponse extends Output {
 
 ---
 
+## UseCaseException - Error Handling
+
+The framework provides `UseCaseException` for throwing errors during use case execution with specific HTTP status codes.
+
+**Features:**
+- `statusCode` — HTTP status code to return (400, 404, 422, 500, etc.)
+- `message` — Human-readable error message
+- `errorCode` — Optional error code for client-side handling
+- `details` — Optional additional details (validation errors, context)
+
+**Example: Throwing Exceptions in execute()**
+```dart
+@override
+Future<void> execute() async {
+  // Validation errors
+  if (input.userId.isEmpty) {
+    throw UseCaseException(
+      statusCode: 400,
+      message: 'userId is required',
+      errorCode: 'VALIDATION_ERROR',
+    );
+  }
+  
+  // Resource not found
+  final user = await repository.findById(input.userId);
+  if (user == null) {
+    throw UseCaseException(
+      statusCode: 404,
+      message: 'User not found',
+      errorCode: 'USER_NOT_FOUND',
+    );
+  }
+  
+  // Business logic errors
+  if (!user.isActive) {
+    throw UseCaseException(
+      statusCode: 422,
+      message: 'User account is inactive',
+      errorCode: 'ACCOUNT_INACTIVE',
+      details: {'userId': input.userId, 'status': user.status},
+    );
+  }
+  
+  // External service errors
+  try {
+    await externalService.process(user);
+  } catch (e) {
+    throw UseCaseException(
+      statusCode: 503,
+      message: 'External service unavailable',
+      errorCode: 'SERVICE_UNAVAILABLE',
+      details: {'service': 'payment-gateway'},
+    );
+  }
+}
+```
+
+**JSON Response:**
+```json
+{
+  "error": "USER_NOT_FOUND",
+  "message": "User not found"
+}
+```
+
+**With details:**
+```json
+{
+  "error": "ACCOUNT_INACTIVE",
+  "message": "User account is inactive",
+  "details": {
+    "userId": "12345",
+    "status": "suspended"
+  }
+}
+```
+
+---
+
 ## OAuth2 Client Credentials (v0.0.9+)
 
 ### Built-in OAuth2 Authorization Server

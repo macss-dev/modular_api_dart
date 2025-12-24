@@ -69,6 +69,7 @@ Core guides for vertical feature development:
 
 - ✅ `UseCase<I extends Input, O extends Output>` base classes and DTOs (`Input`/`Output`).
 - 🎯 **Custom HTTP Status Codes**: Output DTOs can override `statusCode` getter to return appropriate HTTP status codes (200, 201, 400, 401, 404, 422, 500, etc.)
+- 🚨 **UseCaseException**: Throw structured exceptions during use case execution with custom status codes, error messages, and details
 - 🧩 `useCaseHttpHandler()` adapter: accepts a factory `UseCase Function(Map<String, dynamic>)`
   and returns a Shelf `Handler`.
 - 🔐 **OAuth2 & Authentication**:
@@ -145,7 +146,96 @@ dart pub get
 
 ---
 
-## 🔐 OAuth2 Client Credentials
+## � Error Handling with UseCaseException
+
+Throw structured exceptions during use case execution to control HTTP responses:
+
+```dart
+import 'package:modular_api/modular_api.dart';
+
+class GetUserUseCase extends UseCase<GetUserInput, GetUserOutput> {
+  GetUserUseCase(super.input);
+  
+  static GetUserUseCase fromJson(Map<String, dynamic> json) {
+    return GetUserUseCase(GetUserInput.fromJson(json));
+  }
+  
+  @override
+  String? validate() => null;
+  
+  @override
+  Future<void> execute() async {
+    // Validation errors
+    if (input.userId <= 0) {
+      throw UseCaseException(
+        statusCode: 400,
+        message: 'Invalid user ID',
+        errorCode: 'INVALID_USER_ID',
+      );
+    }
+    
+    // Resource not found
+    final user = await repository.findById(input.userId);
+    if (user == null) {
+      throw UseCaseException(
+        statusCode: 404,
+        message: 'User not found',
+        errorCode: 'USER_NOT_FOUND',
+      );
+    }
+    
+    // Business logic errors
+    if (!user.isActive) {
+      throw UseCaseException(
+        statusCode: 422,
+        message: 'User account is inactive',
+        errorCode: 'ACCOUNT_INACTIVE',
+        details: {'userId': input.userId, 'status': user.status},
+      );
+    }
+    
+    // External service errors
+    try {
+      await externalService.verify(user);
+    } catch (e) {
+      throw UseCaseException(
+        statusCode: 503,
+        message: 'Verification service unavailable',
+        errorCode: 'SERVICE_UNAVAILABLE',
+      );
+    }
+    
+    output = GetUserOutput(user: user);
+  }
+  
+  @override
+  Map<String, dynamic> toJson() => output.toJson();
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "error": "USER_NOT_FOUND",
+  "message": "User not found"
+}
+```
+
+**Response (422 Unprocessable Entity with details):**
+```json
+{
+  "error": "ACCOUNT_INACTIVE",
+  "message": "User account is inactive",
+  "details": {
+    "userId": 123,
+    "status": "suspended"
+  }
+}
+```
+
+---
+
+## �🔐 OAuth2 Client Credentials
 
 The framework provides built-in OAuth2 Authorization Server support with Client Credentials grant type, JWT tokens, and automatic Bearer token validation.
 

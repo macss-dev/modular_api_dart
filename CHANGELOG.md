@@ -6,6 +6,20 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Documentation
 
+## [0.0.10] - 2025-12-23
+### Added
+- **`UseCaseException`** — Dedicated exception for use case execution errors:
+  - `statusCode` — HTTP status code to return (400, 404, 422, 500, etc.)
+  - `message` — Human-readable error message
+  - `errorCode` — Optional error code for client-side handling
+  - `details` — Optional additional details (validation errors, context)
+  - Automatically caught by `useCaseHttpHandler` and converted to appropriate HTTP responses
+  - Allows fine-grained control over error responses instead of generic 500 errors
+
+### Changed
+- Updated `useCaseHttpHandler` to catch `UseCaseException` and return the specified status code
+- Enhanced error handling with structured error responses
+
 ## [0.0.9] - 2025-12-15
 ### Added
 - **OAuth2 Client Credentials Support** — full OAuth2 implementation:

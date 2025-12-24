@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:modular_api/modular_api.dart';
@@ -57,7 +58,7 @@ class ModularApi {
 
     if (strict) {
       // Strict mode: Register for all HTTP methods and return 405 for non-matching
-      final strictHandler = (Request request) {
+      FutureOr<Response> strictHandler(Request request) {
         if (request.method.toUpperCase() != methodU) {
           return Response(
             405,
@@ -73,7 +74,7 @@ class ModularApi {
           );
         }
         return handler(request);
-      };
+      }
 
       // Register for all common HTTP methods
       _root.get(normalizedPath, strictHandler);
