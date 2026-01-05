@@ -148,7 +148,7 @@ class ThrowExceptionOutput implements Output {
       },
     };
   }
-  
+
   @override
   int get statusCode => 200;
 }
@@ -157,7 +157,7 @@ class ThrowExceptionUseCase
     implements UseCase<ThrowExceptionInput, ThrowExceptionOutput> {
   @override
   final ThrowExceptionInput input;
-  
+
   @override
   late ThrowExceptionOutput output;
 
