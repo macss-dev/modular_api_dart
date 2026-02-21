@@ -6,6 +6,36 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Documentation
 
+## [0.1.0] - 2026-02-21
+### Changed
+- **BREAKING:** Stripped to core-only — aligned Dart and TypeScript SDKs at feature parity
+- Version bump from 0.0.10 to 0.1.0 (semver: new public API surface)
+- `ModularApi` constructor no longer accepts `oauthService` parameter
+- `ModuleBuilder.usecase()` no longer accepts `requiredScopes` parameter
+- Reduced dependencies from 14 to 3 (`shelf`, `shelf_router`, `shelf_swagger_ui`)
+- Simplified `doc/INDEX.md` to core-only development flow
+- Example no longer uses `Env` — hardcoded port for simplicity
+
+### Removed
+- `lib/src/auth/` — `JwtHelper`, `OAuthService`, `OAuthClient`, `PasswordHasher`, `TokenHasher`, all OAuth2 types
+- `lib/src/core/oauth_handler.dart` — `createOAuthTokenHandler`
+- `lib/src/middlewares/apikey.dart` — `exampleApiKeyMiddleware`
+- `lib/src/middlewares/bearer.dart` — `bearer()`, `requireAuth()`
+- `lib/src/utils/env.dart` — `Env` utility
+- `lib/src/utils/get_local_ip.dart` — `getLocalIp`
+- Dependencies: `http`, `ffi`, `dotenv`, `path`, `cryptography`, `bcrypt`, `dart_jsonwebtoken`, `crypto`, `ffigen`
+- Documentation: `auth_implementation_guide.md`, `authentication_guide.md`, `http_client_guide.md`
+
+### Kept (Core)
+- `UseCase<I, O>`, `Input`, `Output` — abstract base classes
+- `UseCaseException` — structured error handling
+- `ModularApi`, `ModuleBuilder` — routing and module registration
+- `useCaseHttpHandler` — Shelf HTTP adapter
+- `useCaseTestHandler` — unit test helper
+- `exampleCorsMiddleware` — CORS middleware
+- `OpenApi` — automatic Swagger/OpenAPI docs at `/docs`
+- `GET /health` — health check endpoint
+
 ## [0.0.10] - 2025-12-23
 ### Added
 - **`UseCaseException`** — Dedicated exception for use case execution errors:
