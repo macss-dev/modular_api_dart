@@ -13,8 +13,9 @@ class ModularApi {
   final Router _root = Router();
   final List<Middleware> _middlewares = [];
   final String basePath;
+  final String title;
 
-  ModularApi({this.basePath = '/api'});
+  ModularApi({this.basePath = '/api', this.title = 'API'});
 
   ModularApi module(String name, void Function(ModuleBuilder) build) {
     final m = ModuleBuilder(
@@ -42,7 +43,7 @@ class ModularApi {
     _root.get('/health', (Request request) => Response.ok('ok'));
 
     await OpenApi.init(
-      title: 'Example API',
+      title: title,
       port: port,
       // Customize as needed
       // servers: [
@@ -53,6 +54,7 @@ class ModularApi {
       // ],
     );
     _root.get('/docs', OpenApi.docs);
+    _root.get('/docs/', OpenApi.docs);
     // root.get('/openapi.json', OpenApiSpecification.openapiJson);
 
     if (onBeforeServe != null) {

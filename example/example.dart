@@ -3,7 +3,7 @@ import 'package:modular_api/modular_api.dart';
 // ─── Server ───────────────────────────────────────────────────────────────────
 
 Future<void> main(List<String> args) async {
-  final api = ModularApi(basePath: '/api');
+  final api = ModularApi(basePath: '/api', title: 'Greetings API');
 
   api.module('greetings', buildGreetingsModule);
 
