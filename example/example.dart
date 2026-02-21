@@ -43,13 +43,16 @@ class HelloInput implements Input {
 
 // ─── Output DTO ───────────────────────────────────────────────────────────────
 
-class HelloOutput extends Output {
+class HelloOutput implements Output {
   final String message;
 
   HelloOutput({this.message = ''});
 
   factory HelloOutput.fromJson(Map<String, dynamic> json) =>
       HelloOutput(message: (json['message'] ?? '').toString());
+
+  @override
+  int get statusCode => 200;
 
   @override
   Map<String, dynamic> toJson() => {'message': message};

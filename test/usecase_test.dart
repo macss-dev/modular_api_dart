@@ -69,7 +69,7 @@ class SumInput implements Input {
       };
 }
 
-class SumOutput extends Output {
+class SumOutput implements Output {
   final int resultado;
 
   SumOutput({required this.resultado});
@@ -79,6 +79,9 @@ class SumOutput extends Output {
             ? json['resultado']
             : int.tryParse((json['resultado'] ?? '').toString()) ?? 0,
       );
+
+  @override
+  int get statusCode => 200;
 
   @override
   Map<String, dynamic> toJson() => {'resultado': resultado};

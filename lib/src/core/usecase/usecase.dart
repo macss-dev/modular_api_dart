@@ -1,3 +1,13 @@
+/// **Contract** — use `implements UseCase<I, O>`.
+///
+/// Pure interface: all members must be provided by the implementor.
+/// No default behavior is inherited — every UseCase is self-contained.
+///
+/// Lifecycle (handled by the framework):
+///   1. `fromJson(json)`    — static factory, builds the use case
+///   2. `validate()`        — return error string or null
+///   3. `execute()`         — run business logic, set `this.output`
+///   4. `output.toJson()`   — serialize and return to HTTP client
 abstract class UseCase<I extends Input, O extends Output> {
   /// DTO entrada
   /// Debe ser inicializado en el constructor
@@ -29,6 +39,10 @@ abstract class UseCase<I extends Input, O extends Output> {
   Map<String, dynamic> toJson();
 }
 
+/// **Contract** — use `implements Input`.
+///
+/// Pure interface: all members must be provided by the implementor.
+/// No default behavior is inherited — every Input is self-contained.
 abstract class Input {
   /// El contrato no impone fromJson;
   factory Input.fromJson(Map<String, dynamic> json) {
@@ -41,6 +55,11 @@ abstract class Input {
   Map<String, dynamic> toSchema();
 }
 
+/// **Contract** — use `implements Output`.
+///
+/// Pure interface: all members must be provided by the implementor.
+/// The implementor must define `statusCode` explicitly — this forces
+/// developers to think about HTTP status codes for every response.
 abstract class Output {
   Map<String, dynamic> toJson();
 
@@ -49,7 +68,6 @@ abstract class Output {
   Map<String, dynamic> toSchema();
 
   /// HTTP status code to return.
-  /// Override this getter to return a custom status code.
-  /// Default is 200 (OK).
-  int get statusCode => 200;
+  /// Must be implemented explicitly (e.g. 200, 201, 400, 404).
+  int get statusCode;
 }
