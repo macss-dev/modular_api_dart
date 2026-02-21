@@ -1,4 +1,108 @@
 # Changelog
+All notable changes to this project will be documented in this file.
+
+The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
+and the project adheres to [Semantic Versioning](https://semver.org/).
+
+### Documentation
+
+## [0.1.0] - 2026-02-21
+### Changed
+- **BREAKING:** Stripped to core-only — aligned Dart and TypeScript SDKs at feature parity
+- Version bump from 0.0.10 to 0.1.0 (semver: new public API surface)
+- `ModularApi` constructor no longer accepts `oauthService` parameter
+- `ModuleBuilder.usecase()` no longer accepts `requiredScopes` parameter
+- Reduced dependencies from 14 to 3 (`shelf`, `shelf_router`, `shelf_swagger_ui`)
+- Simplified `doc/INDEX.md` to core-only development flow
+- Example no longer uses `Env` — hardcoded port for simplicity
+
+### Removed
+- `lib/src/auth/` — `JwtHelper`, `OAuthService`, `OAuthClient`, `PasswordHasher`, `TokenHasher`, all OAuth2 types
+- `lib/src/core/oauth_handler.dart` — `createOAuthTokenHandler`
+- `lib/src/middlewares/apikey.dart` — `exampleApiKeyMiddleware`
+- `lib/src/middlewares/bearer.dart` — `bearer()`, `requireAuth()`
+- `lib/src/utils/env.dart` — `Env` utility
+- `lib/src/utils/get_local_ip.dart` — `getLocalIp`
+- Dependencies: `http`, `ffi`, `dotenv`, `path`, `cryptography`, `bcrypt`, `dart_jsonwebtoken`, `crypto`, `ffigen`
+- Documentation: `auth_implementation_guide.md`, `authentication_guide.md`, `http_client_guide.md`
+
+### Kept (Core)
+- `UseCase<I, O>`, `Input`, `Output` — abstract base classes
+- `UseCaseException` — structured error handling
+- `ModularApi`, `ModuleBuilder` — routing and module registration
+- `useCaseHttpHandler` — Shelf HTTP adapter
+- `useCaseTestHandler` — unit test helper
+- `exampleCorsMiddleware` — CORS middleware
+- `OpenApi` — automatic Swagger/OpenAPI docs at `/docs`
+- `GET /health` — health check endpoint
+
+## [0.0.10] - 2025-12-23
+### Added
+- **`UseCaseException`** — Dedicated exception for use case execution errors:
+  - `statusCode` — HTTP status code to return (400, 404, 422, 500, etc.)
+  - `message` — Human-readable error message
+  - `errorCode` — Optional error code for client-side handling
+  - `details` — Optional additional details (validation errors, context)
+  - Automatically caught by `useCaseHttpHandler` and converted to appropriate HTTP responses
+  - Allows fine-grained control over error responses instead of generic 500 errors
+
+### Changed
+- Updated `useCaseHttpHandler` to catch `UseCaseException` and return the specified status code
+- Enhanced error handling with structured error responses
+
+## [0.0.9] - 2025-12-15
+### Added
+- **OAuth2 Client Credentials Support** — full OAuth2 implementation:
+  - `OAuthService` — manages client authentication and JWT token generation
+  - `OAuthClient` — represents registered clients with credentials and scopes
+  - `TokenRequest`, `TokenResponse`, `TokenErrorResponse` — OAuth2 data structures
+  - `AccessToken` — decoded JWT with scope validation methods
+  - `createOAuthTokenHandler` — POST /oauth/token endpoint handler
+  - `bearer()` middleware — validates Bearer tokens and enforces scopes
+  - `requireAuth()` middleware — marks routes as requiring authentication
+  - HS256 (HMAC-SHA256) JWT signing algorithm
+  - Scope-based authorization for protected endpoints
+  - Follows RFC 6749 OAuth2 specification
+
+### Changed
+- Exported auth utilities: `JwtHelper`, `hashPassword`, `verifyPassword`, `hashToken`
+- Updated exports to include OAuth2 types and services
+
+### Removed
+- **Removed `template/` folder** — Simplified project structure by removing the full example template
+  - Template project has been removed to reduce repository complexity
+  - Only the minimal `example/` folder remains for quick reference
+  - Previous template code included extensive examples, tests, and infrastructure that were redundant
+
+### Documentation
+- Added comprehensive OAuth2 guides and examples
+- Updated AGENTS.md with OAuth2 usage patterns
+- Updated all documentation to remove references to `template/` folder
+- Simplified examples to focus on the minimal `example/` implementation
+- Cleaned up README.md, AGENTS.md, and guides to reflect simplified structure
+
+## [0.0.8] - 2025-12-04
+### Added
+- **Output.statusCode** — customizable HTTP status code for UseCase responses:
+  - `Output` abstract class now includes `int get statusCode => 200;` getter
+  - Override in your Output DTO to return custom HTTP status codes (e.g., 201 for created, 400 for bad request)
+  - `useCaseHttpHandler` uses `output.statusCode` instead of hardcoded 200
+  - Enables proper RESTful responses without modifying the HTTP handler
+
+### Changed
+- **Output DTOs** now use `extends Output` instead of `implements Output` to inherit the default `statusCode` getter
+- Example and template Output classes updated to extend Output
+
+### Migration Guide
+If you have existing Output DTOs using `implements Output`, change them to `extends Output`:
+```dart
+// Before
+class MyOutput implements Output { ... }
+
+// After
+class MyOutput extends Output { ... }
+```
+Alternatively, add the statusCode getter manually: `@override int get statusCode => 200;`
 
 ## [0.0.7] - 2025-11-04
 ### Added
@@ -72,12 +176,6 @@
 ## [0.0.3] - 2025-10-23
 ### Added
 - Automatic health endpoint: the server registers `GET /health` which responds with `ok` on startup. Implemented in `modular_api.dart` (exposes `_root.get('/health', (Request request) => Response.ok('ok'));`).
-
-
-All notable changes to this project will be documented in this file.
-
-The format loosely follows [Keep a Changelog](https://keepachangelog.com/)
-and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.0.2] - 2025-10-21
 ### Changed

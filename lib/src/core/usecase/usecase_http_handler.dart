@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import 'usecase.dart';
+import 'use_case_exception.dart';
 
 /// Generic handler for any UseCase
 Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
@@ -29,10 +31,24 @@ Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
       // 3. Execute the use case
       await useCase.execute();
 
-      // 4. Serialize the response and return
-      return Response.ok(jsonEncode(useCase.toJson()), headers: jsonHeaders);
+      // 4. Serialize the response and return with the appropriate status code
+      final statusCode = useCase.output.statusCode;
+      return Response(
+        statusCode,
+        headers: jsonHeaders,
+        body: jsonEncode(useCase.toJson()),
+      );
+    } on UseCaseException catch (e) {
+      // Handle known business logic exceptions with custom status codes
+      stderr.writeln('UseCaseException: $e');
+      return Response(
+        e.statusCode,
+        headers: jsonHeaders,
+        body: jsonEncode(e.toJson()),
+      );
     } catch (e) {
-      // Here you can log the error
+      // Handle unexpected errors
+      stderr.writeln('useCaseHttpHandler Error: $e');
       return Response(
         500,
         headers: jsonHeaders,

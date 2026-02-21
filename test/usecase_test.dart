@@ -81,6 +81,9 @@ class SumOutput implements Output {
       );
 
   @override
+  int get statusCode => 200;
+
+  @override
   Map<String, dynamic> toJson() => {'resultado': resultado};
 
   @override

@@ -162,6 +162,277 @@ When implementing `toSchema()`, use these mappings:
 
 ---
 
+## Custom HTTP Status Codes (v0.0.8+)
+
+Output DTOs can specify custom HTTP status codes by overriding the `statusCode` getter.
+
+**Default Behavior:**
+- All successful responses return HTTP 200 by default
+- Override `statusCode` getter to return different codes
+
+**Example: Error Response with Custom Status Code**
+```dart
+class ApiResponse extends Output {
+  final int errorCode;
+  final String message;
+  final bool success;
+  
+  ApiResponse({
+    required this.errorCode,
+    required this.message,
+    required this.success,
+  });
+  
+  factory ApiResponse.fromJson(Map<String, dynamic> json) {
+    return ApiResponse(
+      errorCode: json['errorCode'] as int,
+      message: json['message'] as String,
+      success: json['success'] as bool,
+    );
+  }
+  
+  @override
+  Map<String, dynamic> toJson() => {
+    'errorCode': errorCode,
+    'message': message,
+    'success': success,
+  };
+  
+  @override
+  Map<String, dynamic> toSchema() => {
+    'type': 'object',
+    'properties': {
+      'errorCode': {'type': 'integer'},
+      'message': {'type': 'string'},
+      'success': {'type': 'boolean'},
+    },
+    'required': ['errorCode', 'message', 'success'],
+  };
+  
+  /// Map error codes to HTTP status codes
+  @override
+  int get statusCode {
+    if (success) return 200;
+    return switch (errorCode) {
+      1001 => 400, // Bad Request
+      1002 || 1003 => 401, // Unauthorized
+      1004 => 403, // Forbidden
+      1005 => 404, // Not Found
+      1006 => 422, // Unprocessable Entity
+      1007 => 503, // Service Unavailable
+      _ => 500, // Internal Server Error
+    };
+  }
+}
+```
+
+**Common HTTP Status Code Mappings:**
+| Code | Meaning | Use Case |
+|------|---------|----------|
+| 200 | OK | Successful operation |
+| 201 | Created | Resource created |
+| 400 | Bad Request | Invalid input data |
+| 401 | Unauthorized | Authentication required/failed |
+| 403 | Forbidden | Insufficient permissions |
+| 404 | Not Found | Resource not found |
+| 422 | Unprocessable Entity | Validation errors |
+| 500 | Internal Server Error | Unexpected errors |
+| 503 | Service Unavailable | External service down |
+
+---
+
+## UseCaseException - Error Handling
+
+The framework provides `UseCaseException` for throwing errors during use case execution with specific HTTP status codes.
+
+**Features:**
+- `statusCode` — HTTP status code to return (400, 404, 422, 500, etc.)
+- `message` — Human-readable error message
+- `errorCode` — Optional error code for client-side handling
+- `details` — Optional additional details (validation errors, context)
+
+**Example: Throwing Exceptions in execute()**
+```dart
+@override
+Future<void> execute() async {
+  // Validation errors
+  if (input.userId.isEmpty) {
+    throw UseCaseException(
+      statusCode: 400,
+      message: 'userId is required',
+      errorCode: 'VALIDATION_ERROR',
+    );
+  }
+  
+  // Resource not found
+  final user = await repository.findById(input.userId);
+  if (user == null) {
+    throw UseCaseException(
+      statusCode: 404,
+      message: 'User not found',
+      errorCode: 'USER_NOT_FOUND',
+    );
+  }
+  
+  // Business logic errors
+  if (!user.isActive) {
+    throw UseCaseException(
+      statusCode: 422,
+      message: 'User account is inactive',
+      errorCode: 'ACCOUNT_INACTIVE',
+      details: {'userId': input.userId, 'status': user.status},
+    );
+  }
+  
+  // External service errors
+  try {
+    await externalService.process(user);
+  } catch (e) {
+    throw UseCaseException(
+      statusCode: 503,
+      message: 'External service unavailable',
+      errorCode: 'SERVICE_UNAVAILABLE',
+      details: {'service': 'payment-gateway'},
+    );
+  }
+}
+```
+
+**JSON Response:**
+```json
+{
+  "error": "USER_NOT_FOUND",
+  "message": "User not found"
+}
+```
+
+**With details:**
+```json
+{
+  "error": "ACCOUNT_INACTIVE",
+  "message": "User account is inactive",
+  "details": {
+    "userId": "12345",
+    "status": "suspended"
+  }
+}
+```
+
+---
+
+## OAuth2 Client Credentials (v0.0.9+)
+
+### Built-in OAuth2 Authorization Server
+
+The framework provides complete OAuth2 support with Client Credentials grant type for machine-to-machine authentication.
+
+**Key Features:**
+- `OAuthService` — JWT token generation and validation
+- `OAuthClient` — Client registration with credentials and scopes
+- `bearer()` middleware — Token validation and scope enforcement
+- **Auto-mounting** — `/oauth/token` endpoint automatically registered
+- HS256 (HMAC-SHA256) JWT signing
+- Scope-based authorization per usecase
+
+### Quick Setup
+
+```dart
+// 1. Create OAuth service
+final oauthService = OAuthService(
+  jwtSecret: Env.getString('JWT_SECRET'),
+  issuer: 'your-domain.com',
+  audience: 'your-domain.com',
+  tokenTtlSeconds: 86400, // 24 hours
+);
+
+// 2. Register client
+oauthService.registerClient(
+  OAuthClient(
+    clientId: 'client-id',
+    clientSecret: 'secret',
+    allowedScopes: ['read', 'write'],
+    name: 'Client Name',
+    isActive: true,
+  ),
+);
+
+// 3. Create API with OAuth (auto-mounts /oauth/token)
+final api = ModularApi(
+  basePath: '/api',
+  oauthService: oauthService,
+);
+
+// 4. Protect usecases with scopes
+api.module('resources', (m) {
+  m.usecase(
+    'create',
+    CreateResource.fromJson,
+    requiredScopes: ['write'],
+  );
+});
+```
+
+### OAuth2 Flow
+
+**1. Obtain Token:**
+```bash
+curl -X POST http://localhost:8080/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "client-id",
+    "client_secret": "secret",
+    "scope": "read write"
+  }'
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGc...",
+  "token_type": "Bearer",
+  "expires_in": 86400,
+  "scope": "read write"
+}
+```
+
+**2. Use Token:**
+```bash
+curl -X POST http://localhost:8080/api/resources/create \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Resource 1"}'
+```
+
+### Features
+
+- ✅ **Auto-mounting**: `/oauth/token` endpoint registered automatically when `oauthService` is provided
+- ✅ **JWT Tokens**: HS256 signed with claims: iss, aud, sub, client_id, scopes, iat, exp
+- ✅ **Scope Validation**: Per-usecase `requiredScopes` parameter
+- ✅ **401/403 Responses**: Automatic unauthorized and forbidden responses
+- ✅ **405 Support**: Proper HTTP method validation (POST required)
+
+### Environment Variables
+
+```env
+JWT_SECRET=<generate-with-openssl-rand-base64-64>
+JWT_ISSUER=your-domain.com
+JWT_AUDIENCE=your-domain.com
+OAUTH_CLIENT_ID=client-id
+OAUTH_CLIENT_SECRET=<generate-with-openssl-rand-base64-32>
+```
+
+**Generate secure secrets:**
+```bash
+# JWT Secret (64 bytes)
+openssl rand -base64 64
+
+# Client Secret (32 bytes)
+openssl rand -base64 32
+```
+
+---
+
 ## Authentication & HTTP Client (v0.0.7+)
 
 ### Single-User Design
@@ -616,7 +887,6 @@ dart compile exe bin/main.dart -o build/server
 - **[doc/auth_implementation_guide.md](doc/auth_implementation_guide.md)** — Complete JWT auth system
 
 **Additional Resources:**
-- `template/` folder — Full example project with multiple modules
 - `example/` folder — Minimal runnable example
 
 ---

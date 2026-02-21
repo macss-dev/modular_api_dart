@@ -13,11 +13,16 @@ class ModularApi {
   final Router _root = Router();
   final List<Middleware> _middlewares = [];
   final String basePath;
+  final String title;
 
-  ModularApi({this.basePath = '/api'});
+  ModularApi({this.basePath = '/api', this.title = 'API'});
 
   ModularApi module(String name, void Function(ModuleBuilder) build) {
-    final m = ModuleBuilder(basePath: basePath, moduleName: name, root: _root);
+    final m = ModuleBuilder(
+      basePath: basePath,
+      moduleName: name,
+      root: _root,
+    );
 
     build(m);
     m._mount();
@@ -38,7 +43,7 @@ class ModularApi {
     _root.get('/health', (Request request) => Response.ok('ok'));
 
     await OpenApi.init(
-      title: 'Example API',
+      title: title,
       port: port,
       // Customize as needed
       // servers: [
@@ -49,6 +54,7 @@ class ModularApi {
       // ],
     );
     _root.get('/docs', OpenApi.docs);
+    _root.get('/docs/', OpenApi.docs);
     // root.get('/openapi.json', OpenApiSpecification.openapiJson);
 
     if (onBeforeServe != null) {
@@ -68,6 +74,12 @@ class ModularApi {
       ip ?? InternetAddress.anyIPv4,
       port,
     );
+
+    /// Print info
+    stdout.writeln('Docs on http://localhost:$port/docs');
+    stdout.writeln('health on http://localhost:$port/health');
+
+    /// Return server
     return server;
   }
 }
@@ -92,7 +104,7 @@ class ModuleBuilder {
     String? summary,
     String? description,
   }) {
-    final Handler h = useCaseHttpHandler(usecaseFactory);
+    Handler h = useCaseHttpHandler(usecaseFactory);
 
     /// Clean usecase name
     usecaseName = usecaseName.trim();
