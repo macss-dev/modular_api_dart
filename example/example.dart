@@ -6,15 +6,8 @@ Future<void> main(List<String> args) async {
   /// POST api/module1/hello-world
   api.module('module1', module1Builder);
 
-  /// Get the port from the environment (.env) file.
-  /// No default is provided; the PORT environment variable must be set.
-  /// try: `final port = 1234;` to use a fixed port.
-  final port = Env.getInt('PORT');
-
   /// Start the server
-  await api.serve(
-    port: port,
-  );
+  await api.serve(port: 8080);
 }
 
 /// Module 1 builder: defines the use cases for module1.
