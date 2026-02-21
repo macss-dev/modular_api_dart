@@ -1,67 +1,71 @@
 import 'package:modular_api/modular_api.dart';
 
+// ─── Server ───────────────────────────────────────────────────────────────────
+
 Future<void> main(List<String> args) async {
   final api = ModularApi(basePath: '/api');
 
-  /// POST api/module1/hello-world
-  api.module('module1', module1Builder);
+  api.module('greetings', buildGreetingsModule);
 
-  /// Start the server
   await api.serve(port: 8080);
 }
 
-/// Module 1 builder: defines the use cases for module1.
-/// build in his own file in a real project.
-/// /lib/modules/module1/module1_builder.dart
-void module1Builder(ModuleBuilder m) {
-  m.usecase('hello-world', HelloWorld.factory);
+// ─── Module Builder ───────────────────────────────────────────────────────────
+// In a real project, this would live in its own file:
+//   lib/modules/greetings/greetings_builder.dart
+
+void buildGreetingsModule(ModuleBuilder m) {
+  m.usecase('hello', HelloWorld.fromJson);
 }
 
-/// Input for HelloWorld: a single word used in the greeting.
-class HelloInput implements Input {
-  final String word;
+// ─── Input DTO ────────────────────────────────────────────────────────────────
 
-  HelloInput({required this.word});
+class HelloInput implements Input {
+  final String name;
+
+  HelloInput({required this.name});
 
   factory HelloInput.fromJson(Map<String, dynamic> json) =>
-      HelloInput(word: (json['word'] ?? '').toString());
+      HelloInput(name: (json['name'] ?? '').toString());
 
   @override
-  Map<String, dynamic> toJson() => {'word': word};
+  Map<String, dynamic> toJson() => {'name': name};
 
   @override
   Map<String, dynamic> toSchema() => {
         'type': 'object',
         'properties': {
-          'word': {'type': 'string'},
+          'name': {'type': 'string', 'description': 'Name to greet'},
         },
-        'required': ['word'],
+        'required': ['name'],
       };
 }
 
-/// Output for HelloWorld: the composed greeting.
-class HelloOutput extends Output {
-  final String output;
+// ─── Output DTO ───────────────────────────────────────────────────────────────
 
-  HelloOutput({this.output = ''});
+class HelloOutput extends Output {
+  final String message;
+
+  HelloOutput({this.message = ''});
 
   factory HelloOutput.fromJson(Map<String, dynamic> json) =>
-      HelloOutput(output: (json['output'] ?? '').toString());
+      HelloOutput(message: (json['message'] ?? '').toString());
 
   @override
-  Map<String, dynamic> toJson() => {'output': output};
+  Map<String, dynamic> toJson() => {'message': message};
 
   @override
   Map<String, dynamic> toSchema() => {
         'type': 'object',
         'properties': {
-          'output': {'type': 'string'},
+          'message': {'type': 'string', 'description': 'Greeting message'},
         },
-        'required': ['output'],
+        'required': ['message'],
       };
 }
 
-/// HelloWorld use case: returns 'Hello, $word!'
+// ─── UseCase ──────────────────────────────────────────────────────────────────
+
 class HelloWorld implements UseCase<HelloInput, HelloOutput> {
   @override
   final HelloInput input;
@@ -73,26 +77,21 @@ class HelloWorld implements UseCase<HelloInput, HelloOutput> {
     output = HelloOutput();
   }
 
-  /// Factory method to create HelloWorld from JSON input.
-  factory HelloWorld.factory(Map<String, dynamic> json) {
-    final uc = HelloWorld(input: HelloInput.fromJson(json));
-    return uc;
+  static HelloWorld fromJson(Map<String, dynamic> json) {
+    return HelloWorld(input: HelloInput.fromJson(json));
   }
 
   @override
   String? validate() {
-    if (input.word.isEmpty) {
-      return 'The word cannot be empty.';
+    if (input.name.isEmpty) {
+      return 'name is required';
     }
     return null;
   }
 
   @override
   Future<void> execute() async {
-    // put your business logic here
-    final world = input.word;
-
-    output = HelloOutput(output: 'Hello, $world!');
+    output = HelloOutput(message: 'Hello, ${input.name}!');
   }
 
   @override

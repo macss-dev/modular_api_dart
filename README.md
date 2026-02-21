@@ -14,12 +14,16 @@ Define `UseCase` classes (input → validate → execute → output), connect th
 ```dart
 import 'package:modular_api/modular_api.dart';
 
+// ─── Module builder (separate file in real projects) ──────────
+void buildGreetingsModule(ModuleBuilder m) {
+  m.usecase('hello', HelloWorld.fromJson);
+}
+
+// ─── Server ───────────────────────────────────────────────────
 Future<void> main() async {
   final api = ModularApi(basePath: '/api');
 
-  api.module('greetings', (m) {
-    m.usecase('hello', HelloWorld.fromJson);
-  });
+  api.module('greetings', buildGreetingsModule);
 
   await api.serve(port: 8080);
 }
@@ -28,15 +32,17 @@ Future<void> main() async {
 ```bash
 curl -X POST http://localhost:8080/api/greetings/hello \
   -H "Content-Type: application/json" \
-  -d '{"word":"World"}'
+  -d '{"name":"World"}'
 ```
 
 ```json
-{"output":"Hello, World!"}
+{"message":"Hello, World!"}
 ```
 
 **Docs** → `http://localhost:8080/docs`  
 **Health** → `http://localhost:8080/health`
+
+See `example/example.dart` for the full implementation including Input, Output, UseCase with `validate()`, and the builder.
 
 ---
 
@@ -100,10 +106,10 @@ import 'package:test/test.dart';
 void main() {
   test('HelloWorld returns greeting', () async {
     final handler = useCaseTestHandler(HelloWorld.fromJson);
-    final response = await handler({'word': 'World'});
+    final response = await handler({'name': 'World'});
 
     expect(response.statusCode, 200);
-    expect(response.body['output'], 'Hello, World!');
+    expect(response.body['message'], 'Hello, World!');
   });
 }
 ```
