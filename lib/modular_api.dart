@@ -12,6 +12,12 @@ export 'src/core/usecase/usecase.dart' show UseCase, Input, Output;
 export 'src/core/usecase/use_case_exception.dart' show UseCaseException;
 export 'src/core/usecase/usecase_test_handler.dart' show useCaseTestHandler;
 
+// Health
+export 'src/core/health/health_check.dart'
+    show HealthCheck, HealthCheckResult, HealthStatus;
+export 'src/core/health/health_service.dart' show HealthService, HealthResponse;
+export 'src/core/health/health_handler.dart' show healthHandler;
+
 // Middlewares
 export 'src/middlewares/cors.dart' show exampleCorsMiddleware;
 

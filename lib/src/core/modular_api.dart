@@ -14,8 +14,32 @@ class ModularApi {
   final List<Middleware> _middlewares = [];
   final String basePath;
   final String title;
+  final HealthService _healthService;
 
-  ModularApi({this.basePath = '/api', this.title = 'API'});
+  /// Creates a new ModularApi instance.
+  ///
+  /// [version] — API version (e.g. '1.0.0'). Used in health check response.
+  /// [releaseId] — Defaults to `version-debug`. Override at compile time:
+  ///   `dart compile exe --define=RELEASE_ID=1.2.3 bin/main.dart`
+  ModularApi({
+    this.basePath = '/api',
+    this.title = 'Modular API',
+    String version = 'x.y.z',
+    String? releaseId,
+  }) : _healthService = HealthService(
+          version: version,
+          releaseId: releaseId,
+        );
+
+  /// Register a [HealthCheck] to be evaluated on `GET /health`.
+  ///
+  /// ```dart
+  /// api.addHealthCheck(DatabaseHealthCheck());
+  /// ```
+  ModularApi addHealthCheck(HealthCheck check) {
+    _healthService.addHealthCheck(check);
+    return this;
+  }
 
   ModularApi module(String name, void Function(ModuleBuilder) build) {
     final m = ModuleBuilder(
@@ -40,7 +64,7 @@ class ModularApi {
     required int port,
     Future<void> Function(Router root)? onBeforeServe,
   }) async {
-    _root.get('/health', (Request request) => Response.ok('ok'));
+    _root.get('/health', healthHandler(_healthService));
 
     await OpenApi.init(
       title: title,
