@@ -18,6 +18,11 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 - `ModularApi.addHealthCheck()` — register health checks via method chaining
 - `ModularApi` constructor now accepts `version` and optional `releaseId` parameters
 - `releaseId` defaults to `version-debug`; override at compile time with `--define=RELEASE_ID=x.y.z`
+- **Prometheus Metrics Endpoint** — opt-in `GET /metrics` in [Prometheus text exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/)
+- `Counter`, `Gauge`, `Histogram` — pure Dart metric types (zero runtime dependencies)
+- `MetricsRegistrar` — public API for registering custom metrics via `api.metrics`
+- `metricsEnabled`, `metricsPath`, `excludedMetricsRoutes` constructor parameters
+- Built-in HTTP instrumentation: `http_requests_total`, `http_request_duration_seconds`, `http_requests_in_flight`, `process_start_time_seconds`
 
 ### Changed
 - **BREAKING:** `GET /health` response changed from plaintext `ok` to JSON `application/health+json`

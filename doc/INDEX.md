@@ -101,6 +101,7 @@ await api.serve(port: 8080);
 - **[usecase_implementation.md](./usecase_implementation.md)** — Implementing UseCases
 - **[testing_guide.md](./testing_guide.md)** — Testing UseCases with `useCaseTestHandler`
 - **[health_check_guide.md](./health_check_guide.md)** — Health check endpoint (`GET /health`)
+- **[metrics_guide.md](./metrics_guide.md)** — Prometheus metrics endpoint (`GET /metrics`)
 
 ---
 

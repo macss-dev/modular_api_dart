@@ -57,6 +57,7 @@ See `example/example.dart` for the full implementation including Input, Output, 
 - `cors()` middleware — built-in CORS support
 - Swagger UI at `/docs` — auto-generated from registered use cases
 - Health check at `GET /health` — [IETF Health Check Response Format](doc/health_check_guide.md)
+- Prometheus metrics at `GET /metrics` — [Prometheus exposition format](doc/metrics_guide.md)
 - All endpoints default to `POST` (configurable per use case)
 
 ---
@@ -141,6 +142,7 @@ HTTP Request → ModularApi → Module → UseCase → Business Logic → Output
 - [doc/usecase_implementation.md](doc/usecase_implementation.md) — Implementing UseCases
 - [doc/testing_guide.md](doc/testing_guide.md) — Testing guide
 - [doc/health_check_guide.md](doc/health_check_guide.md) — Health check endpoint
+- [doc/metrics_guide.md](doc/metrics_guide.md) — Prometheus metrics endpoint
 
 ---
 
