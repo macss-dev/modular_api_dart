@@ -166,7 +166,10 @@ class ModularApi {
 
     /// Print info
     stdout.writeln('Docs on http://localhost:$port/docs');
-    stdout.writeln('health on http://localhost:$port/health');
+    stdout.writeln('Health on http://localhost:$port/health');
+    if (metricsEnabled) {
+      stdout.writeln('Metrics on http://localhost:$port$metricsPath');
+    }
 
     /// Return server
     return server;

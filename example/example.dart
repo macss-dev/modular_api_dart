@@ -26,7 +26,6 @@ Future<void> main(List<String> args) async {
 
   print('====================================');
   print('API     → http://localhost:8080/api/greetings/hello');
-  print('Metrics → http://localhost:8080/metrics');
   print('====================================');
 }
 
