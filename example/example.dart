@@ -3,11 +3,30 @@ import 'package:modular_api/modular_api.dart';
 // ─── Server ───────────────────────────────────────────────────────────────────
 
 Future<void> main(List<String> args) async {
-  final api = ModularApi(basePath: '/api', title: 'Greetings API');
+  final api = ModularApi(
+    basePath: '/api',
+    title: 'Modular API',
+    version: '1.0.0',
+    metricsEnabled: true, // Opt-in Prometheus metrics at GET /metrics
+  );
+
+  // Register health checks (optional — /health works without any checks)
+  api.addHealthCheck(AlwaysPassHealthCheck());
+
+  // Register custom metrics (only when metricsEnabled: true)
+  // ignore: unused_local_variable
+  final customOps = api.metrics?.createCounter(
+    name: 'greetings_total',
+    help: 'Total greetings served.',
+  );
 
   api.module('greetings', buildGreetingsModule);
 
   await api.serve(port: 8080);
+
+  print('====================================');
+  print('API     → http://localhost:8080/api/greetings/hello');
+  print('====================================');
 }
 
 // ─── Module Builder ───────────────────────────────────────────────────────────
@@ -99,4 +118,17 @@ class HelloWorld implements UseCase<HelloInput, HelloOutput> {
 
   @override
   Map<String, dynamic> toJson() => output.toJson();
+}
+
+// ─── Example Health Check ─────────────────────────────────────────────────────
+// In a real project you'd check a database connection, external service, etc.
+
+class AlwaysPassHealthCheck extends HealthCheck {
+  @override
+  final String name = 'example';
+
+  @override
+  Future<HealthCheckResult> check() async {
+    return HealthCheckResult(status: HealthStatus.pass);
+  }
 }

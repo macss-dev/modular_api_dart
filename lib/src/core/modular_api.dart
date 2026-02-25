@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:modular_api/modular_api.dart';
+import 'package:modular_api/src/core/metrics/metric_registry.dart';
+import 'package:modular_api/src/core/metrics/metrics_middleware.dart';
 import 'package:modular_api/src/core/usecase/usecase_http_handler.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -14,8 +16,73 @@ class ModularApi {
   final List<Middleware> _middlewares = [];
   final String basePath;
   final String title;
+  final HealthService _healthService;
 
-  ModularApi({this.basePath = '/api', this.title = 'API'});
+  // ── Metrics ──
+  final bool metricsEnabled;
+  final String metricsPath;
+  final List<String> _excludedMetricsRoutes;
+  MetricRegistry? _metricRegistry;
+  MetricsRegistrar? _metricsRegistrar;
+
+  // Built-in metrics (initialised lazily when metricsEnabled).
+  Counter? _httpRequestsTotal;
+  Gauge? _httpRequestsInFlight;
+  Histogram? _httpRequestDuration;
+
+  /// Public accessor for custom-metric registration.
+  /// Returns `null` when metrics are disabled.
+  MetricsRegistrar? get metrics => _metricsRegistrar;
+
+  /// Creates a new ModularApi instance.
+  ///
+  /// [version] — API version (e.g. '1.0.0'). Used in health check response.
+  /// [releaseId] — Defaults to `version-debug`. Override at compile time:
+  ///   `dart compile exe --define=RELEASE_ID=1.2.3 bin/main.dart`
+  /// [metricsEnabled] — Opt-in Prometheus metrics at [metricsPath].
+  /// [metricsPath] — Path for the metrics endpoint (default `/metrics`).
+  /// [excludedMetricsRoutes] — Routes excluded from instrumentation.
+  ModularApi({
+    this.basePath = '/api',
+    this.title = 'Modular API',
+    String version = 'x.y.z',
+    String? releaseId,
+    this.metricsEnabled = false,
+    this.metricsPath = '/metrics',
+    List<String>? excludedMetricsRoutes,
+  })  : _healthService = HealthService(
+          version: version,
+          releaseId: releaseId,
+        ),
+        _excludedMetricsRoutes = excludedMetricsRoutes ??
+            ['/metrics', '/health', '/docs', '/docs/'] {
+    if (metricsEnabled) {
+      _metricRegistry = MetricRegistry();
+      _metricsRegistrar = MetricsRegistrar(_metricRegistry!);
+      _httpRequestsTotal = _metricRegistry!.createCounter(
+        name: 'http_requests_total',
+        help: 'Total number of HTTP requests.',
+      );
+      _httpRequestsInFlight = _metricRegistry!.createGauge(
+        name: 'http_requests_in_flight',
+        help: 'Number of HTTP requests currently being processed.',
+      );
+      _httpRequestDuration = _metricRegistry!.createHistogram(
+        name: 'http_request_duration_seconds',
+        help: 'HTTP request duration in seconds.',
+      );
+    }
+  }
+
+  /// Register a [HealthCheck] to be evaluated on `GET /health`.
+  ///
+  /// ```dart
+  /// api.addHealthCheck(DatabaseHealthCheck());
+  /// ```
+  ModularApi addHealthCheck(HealthCheck check) {
+    _healthService.addHealthCheck(check);
+    return this;
+  }
 
   ModularApi module(String name, void Function(ModuleBuilder) build) {
     final m = ModuleBuilder(
@@ -40,7 +107,12 @@ class ModularApi {
     required int port,
     Future<void> Function(Router root)? onBeforeServe,
   }) async {
-    _root.get('/health', (Request request) => Response.ok('ok'));
+    _root.get('/health', healthHandler(_healthService));
+
+    // Mount /metrics endpoint if enabled.
+    if (metricsEnabled && _metricRegistry != null) {
+      _root.get(metricsPath, metricsHandler(_metricRegistry!));
+    }
 
     await OpenApi.init(
       title: title,
@@ -62,6 +134,23 @@ class ModularApi {
     }
 
     var pipeline = const Pipeline();
+
+    // Metrics middleware FIRST (outermost) to capture full lifecycle.
+    if (metricsEnabled &&
+        _httpRequestsTotal != null &&
+        _httpRequestsInFlight != null &&
+        _httpRequestDuration != null) {
+      pipeline = pipeline.addMiddleware(
+        metricsMiddleware(
+          requestsTotal: _httpRequestsTotal!,
+          requestsInFlight: _httpRequestsInFlight!,
+          requestDuration: _httpRequestDuration!,
+          excludedRoutes: _excludedMetricsRoutes,
+          registeredPaths: apiRegistry.routes.map((r) => r.path).toList(),
+        ),
+      );
+    }
+
     for (final m in _middlewares) {
       pipeline = pipeline.addMiddleware(m);
     }
@@ -77,7 +166,10 @@ class ModularApi {
 
     /// Print info
     stdout.writeln('Docs on http://localhost:$port/docs');
-    stdout.writeln('health on http://localhost:$port/health');
+    stdout.writeln('Health on http://localhost:$port/health');
+    if (metricsEnabled) {
+      stdout.writeln('Metrics on http://localhost:$port$metricsPath');
+    }
 
     /// Return server
     return server;
