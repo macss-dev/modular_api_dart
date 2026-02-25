@@ -124,12 +124,10 @@ void main() {
       );
 
       final samples = requestDuration.collect();
-      final countSample =
-          samples.firstWhere((s) => s.suffix == '_count');
+      final countSample = samples.firstWhere((s) => s.suffix == '_count');
       expect(countSample.value, equals(1.0));
 
-      final sumSample =
-          samples.firstWhere((s) => s.suffix == '_sum');
+      final sumSample = samples.firstWhere((s) => s.suffix == '_sum');
       // Duration should be at least 40ms (0.04s) — allow some tolerance
       expect(sumSample.value, greaterThan(0.04));
     });
@@ -205,8 +203,7 @@ void main() {
 
     test('handles handler exception gracefully', () async {
       final mw = createMiddleware();
-      Response throwingHandler(Request request) =>
-          throw Exception('boom');
+      Response throwingHandler(Request request) => throw Exception('boom');
       final handler = mw(throwingHandler);
 
       try {

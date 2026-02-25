@@ -107,7 +107,8 @@ class MetricRegistry {
     final samples = counter.collect();
     if (samples.isEmpty) return;
     for (final s in samples) {
-      buf.writeln('${counter.name}${_formatLabels(s.labels)} ${_formatValue(s.value)}');
+      buf.writeln(
+          '${counter.name}${_formatLabels(s.labels)} ${_formatValue(s.value)}');
     }
   }
 
@@ -118,7 +119,8 @@ class MetricRegistry {
       buf.writeln('${gauge.name} ${_formatValue(gauge.value)}');
     } else {
       for (final s in samples) {
-        buf.writeln('${gauge.name}${_formatLabels(s.labels)} ${_formatValue(s.value)}');
+        buf.writeln(
+            '${gauge.name}${_formatLabels(s.labels)} ${_formatValue(s.value)}');
       }
     }
   }

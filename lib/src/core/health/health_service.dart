@@ -59,8 +59,7 @@ class HealthService {
   HealthService({
     required this.version,
     String? releaseId,
-  }) : releaseId = releaseId ??
-            _releaseIdFromEnvironment(version);
+  }) : releaseId = releaseId ?? _releaseIdFromEnvironment(version);
 
   /// Reads RELEASE_ID from compile-time environment.
   /// Falls back to `$version-debug` if not set.

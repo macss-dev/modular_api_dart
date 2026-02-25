@@ -121,7 +121,8 @@ void main() {
         final response = await service.evaluate();
 
         expect(response.checks['database']!.responseTime, isNotNull);
-        expect(response.checks['database']!.responseTime!, greaterThanOrEqualTo(90));
+        expect(response.checks['database']!.responseTime!,
+            greaterThanOrEqualTo(90));
       });
     });
 

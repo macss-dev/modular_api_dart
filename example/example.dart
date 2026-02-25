@@ -23,7 +23,7 @@ Future<void> main(List<String> args) async {
   api.module('greetings', buildGreetingsModule);
 
   await api.serve(port: 8080);
-  
+
   print('====================================');
   print('API     → http://localhost:8080/api/greetings/hello');
   print('Metrics → http://localhost:8080/metrics');

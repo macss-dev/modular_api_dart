@@ -23,9 +23,7 @@ void main() {
       // Extract the value line — it should be a reasonable epoch timestamp
       final lines = output.split('\n');
       final valueLine = lines.firstWhere(
-        (l) =>
-            l.startsWith('process_start_time_seconds') &&
-            !l.startsWith('#'),
+        (l) => l.startsWith('process_start_time_seconds') && !l.startsWith('#'),
       );
       final value = double.parse(valueLine.split(' ').last);
       // Should be within 5 seconds of now
@@ -161,10 +159,14 @@ void main() {
 
         final output = registry.serialize();
         expect(output, contains('# TYPE request_duration histogram'));
-        expect(output, contains('request_duration_bucket{method="GET",le="0.1"} 0'));
-        expect(output, contains('request_duration_bucket{method="GET",le="0.5"} 1'));
-        expect(output, contains('request_duration_bucket{method="GET",le="1.0"} 1'));
-        expect(output, contains('request_duration_bucket{method="GET",le="+Inf"} 1'));
+        expect(output,
+            contains('request_duration_bucket{method="GET",le="0.1"} 0'));
+        expect(output,
+            contains('request_duration_bucket{method="GET",le="0.5"} 1'));
+        expect(output,
+            contains('request_duration_bucket{method="GET",le="1.0"} 1'));
+        expect(output,
+            contains('request_duration_bucket{method="GET",le="+Inf"} 1'));
         expect(output, contains('request_duration_count{method="GET"} 1'));
         expect(output, contains('request_duration_sum{method="GET"} 0.3'));
       });

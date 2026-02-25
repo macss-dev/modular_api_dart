@@ -6,7 +6,8 @@ void main() {
 
   group('Counter', () {
     test('starts at zero', () {
-      final counter = Counter(name: 'http_requests_total', help: 'Total requests');
+      final counter =
+          Counter(name: 'http_requests_total', help: 'Total requests');
       expect(counter.value, equals(0.0));
     });
 
@@ -172,7 +173,17 @@ void main() {
 
   group('Histogram', () {
     final defaultBuckets = [
-      0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+      0.005,
+      0.01,
+      0.025,
+      0.05,
+      0.1,
+      0.25,
+      0.5,
+      1.0,
+      2.5,
+      5.0,
+      10.0,
     ];
 
     test('uses default buckets when none provided', () {
@@ -228,30 +239,22 @@ void main() {
 
       // le=0.1 → 0
       expect(
-        bucketSamples
-            .firstWhere((s) => s.labels['le'] == '0.1')
-            .value,
+        bucketSamples.firstWhere((s) => s.labels['le'] == '0.1').value,
         equals(0.0),
       );
       // le=0.5 → 1
       expect(
-        bucketSamples
-            .firstWhere((s) => s.labels['le'] == '0.5')
-            .value,
+        bucketSamples.firstWhere((s) => s.labels['le'] == '0.5').value,
         equals(1.0),
       );
       // le=1.0 → 1
       expect(
-        bucketSamples
-            .firstWhere((s) => s.labels['le'] == '1.0')
-            .value,
+        bucketSamples.firstWhere((s) => s.labels['le'] == '1.0').value,
         equals(1.0),
       );
       // le=+Inf → 1
       expect(
-        bucketSamples
-            .firstWhere((s) => s.labels['le'] == '+Inf')
-            .value,
+        bucketSamples.firstWhere((s) => s.labels['le'] == '+Inf').value,
         equals(1.0),
       );
     });
@@ -266,8 +269,7 @@ void main() {
       hist.observe(0.8);
 
       final samples = hist.collect();
-      final count =
-          samples.firstWhere((s) => s.suffix == '_count').value;
+      final count = samples.firstWhere((s) => s.suffix == '_count').value;
       final sum = samples.firstWhere((s) => s.suffix == '_sum').value;
       expect(count, equals(2.0));
       expect(sum, equals(1.3));
@@ -288,8 +290,7 @@ void main() {
       child.observe(0.5);
 
       final samples = hist.collect();
-      final countSamples =
-          samples.where((s) => s.suffix == '_count').toList();
+      final countSamples = samples.where((s) => s.suffix == '_count').toList();
       expect(countSamples, hasLength(1));
       expect(countSamples.first.labels['method'], equals('GET'));
     });
@@ -306,8 +307,7 @@ void main() {
       b.observe(1.0);
 
       final samples = hist.collect();
-      final count =
-          samples.firstWhere((s) => s.suffix == '_count').value;
+      final count = samples.firstWhere((s) => s.suffix == '_count').value;
       expect(count, equals(2.0));
     });
 

@@ -13,8 +13,7 @@ class _PingInput implements Input {
   @override
   Map<String, dynamic> toJson() => {};
   @override
-  Map<String, dynamic> toSchema() =>
-      {'type': 'object', 'properties': {}};
+  Map<String, dynamic> toSchema() => {'type': 'object', 'properties': {}};
 }
 
 class _PingOutput implements Output {
@@ -88,7 +87,8 @@ void main() {
       expect(response.statusCode, equals(404));
     });
 
-    test('metrics enabled — GET /metrics returns 200 with prometheus content type',
+    test(
+        'metrics enabled — GET /metrics returns 200 with prometheus content type',
         () async {
       await startServer(metricsEnabled: true);
       final response = await http.get(Uri.parse('$baseUrl/metrics'));
@@ -111,8 +111,7 @@ void main() {
       );
 
       // Check metrics endpoint
-      final metricsResponse =
-          await http.get(Uri.parse('$baseUrl/metrics'));
+      final metricsResponse = await http.get(Uri.parse('$baseUrl/metrics'));
       final body = metricsResponse.body;
 
       expect(body, contains('http_requests_total'));
@@ -130,8 +129,7 @@ void main() {
       await http.get(Uri.parse('$baseUrl/docs'));
 
       // Metrics should not contain health or docs routes
-      final metricsResponse =
-          await http.get(Uri.parse('$baseUrl/metrics'));
+      final metricsResponse = await http.get(Uri.parse('$baseUrl/metrics'));
       final body = metricsResponse.body;
 
       // Only process_start_time_seconds should be present

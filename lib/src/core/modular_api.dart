@@ -54,8 +54,8 @@ class ModularApi {
           version: version,
           releaseId: releaseId,
         ),
-        _excludedMetricsRoutes =
-            excludedMetricsRoutes ?? ['/metrics', '/health', '/docs', '/docs/'] {
+        _excludedMetricsRoutes = excludedMetricsRoutes ??
+            ['/metrics', '/health', '/docs', '/docs/'] {
     if (metricsEnabled) {
       _metricRegistry = MetricRegistry();
       _metricsRegistrar = MetricsRegistrar(_metricRegistry!);
@@ -146,8 +146,7 @@ class ModularApi {
           requestsInFlight: _httpRequestsInFlight!,
           requestDuration: _httpRequestDuration!,
           excludedRoutes: _excludedMetricsRoutes,
-          registeredPaths:
-              apiRegistry.routes.map((r) => r.path).toList(),
+          registeredPaths: apiRegistry.routes.map((r) => r.path).toList(),
         ),
       );
     }
