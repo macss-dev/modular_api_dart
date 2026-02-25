@@ -18,6 +18,10 @@ export 'src/core/health/health_check.dart'
 export 'src/core/health/health_service.dart' show HealthService, HealthResponse;
 export 'src/core/health/health_handler.dart' show healthHandler;
 
+// Metrics
+export 'src/core/metrics/metric.dart' show Counter, Gauge, Histogram, MetricSample;
+export 'src/core/metrics/metric_registry.dart' show MetricsRegistrar;
+
 // Middlewares
 export 'src/middlewares/cors.dart' show exampleCorsMiddleware;
 

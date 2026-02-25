@@ -7,17 +7,26 @@ Future<void> main(List<String> args) async {
     basePath: '/api',
     title: 'Modular API',
     version: '0.2.0',
+    metricsEnabled: true, // Opt-in Prometheus metrics at GET /metrics
   );
 
   // Register health checks (optional — /health works without any checks)
   api.addHealthCheck(AlwaysPassHealthCheck());
+
+  // Register custom metrics (only when metricsEnabled: true)
+  // ignore: unused_local_variable
+  final customOps = api.metrics?.createCounter(
+    name: 'greetings_total',
+    help: 'Total greetings served.',
+  );
 
   api.module('greetings', buildGreetingsModule);
 
   await api.serve(port: 8080);
   
   print('====================================');
-  print('API  → http://localhost:8080/api/greetings/hello');
+  print('API     → http://localhost:8080/api/greetings/hello');
+  print('Metrics → http://localhost:8080/metrics');
   print('====================================');
 }
 
