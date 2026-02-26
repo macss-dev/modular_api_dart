@@ -161,6 +161,9 @@ class ThrowExceptionUseCase
   @override
   late ThrowExceptionOutput output;
 
+  @override
+  ModularLogger? logger;
+
   ThrowExceptionUseCase(this.input);
 
   static ThrowExceptionUseCase fromJson(Map<String, dynamic> json) {

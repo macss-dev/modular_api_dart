@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:modular_api/modular_api.dart';
+import 'package:modular_api/src/core/logger/logging_middleware.dart';
 import 'package:modular_api/src/core/metrics/metric_registry.dart';
 import 'package:modular_api/src/core/metrics/metrics_middleware.dart';
 import 'package:modular_api/src/core/usecase/usecase_http_handler.dart';
@@ -17,6 +18,9 @@ class ModularApi {
   final String basePath;
   final String title;
   final HealthService _healthService;
+
+  // ── Logger ──
+  final LogLevel logLevel;
 
   // ── Metrics ──
   final bool metricsEnabled;
@@ -42,6 +46,7 @@ class ModularApi {
   /// [metricsEnabled] — Opt-in Prometheus metrics at [metricsPath].
   /// [metricsPath] — Path for the metrics endpoint (default `/metrics`).
   /// [excludedMetricsRoutes] — Routes excluded from instrumentation.
+  /// [logLevel] — Minimum RFC 5424 severity to emit (default `LogLevel.info`).
   ModularApi({
     this.basePath = '/api',
     this.title = 'Modular API',
@@ -50,6 +55,7 @@ class ModularApi {
     this.metricsEnabled = false,
     this.metricsPath = '/metrics',
     List<String>? excludedMetricsRoutes,
+    this.logLevel = LogLevel.info,
   })  : _healthService = HealthService(
           version: version,
           releaseId: releaseId,
@@ -135,7 +141,17 @@ class ModularApi {
 
     var pipeline = const Pipeline();
 
-    // Metrics middleware FIRST (outermost) to capture full lifecycle.
+    // Logging middleware FIRST (outermost) to capture full lifecycle
+    // including all subsequent middlewares.
+    pipeline = pipeline.addMiddleware(
+      loggingMiddleware(
+        logLevel: logLevel,
+        serviceName: title,
+        excludedRoutes: ['/health', metricsPath, '/docs', '/docs/'],
+      ),
+    );
+
+    // Metrics middleware second to capture request lifecycle.
     if (metricsEnabled &&
         _httpRequestsTotal != null &&
         _httpRequestsInFlight != null &&
@@ -154,8 +170,6 @@ class ModularApi {
     for (final m in _middlewares) {
       pipeline = pipeline.addMiddleware(m);
     }
-
-    pipeline = pipeline.addMiddleware(logRequests());
 
     final handler = pipeline.addHandler(_root.call);
     final server = await shelf_io.serve(

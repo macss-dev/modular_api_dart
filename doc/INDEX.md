@@ -102,6 +102,7 @@ await api.serve(port: 8080);
 - **[testing_guide.md](./testing_guide.md)** — Testing UseCases with `useCaseTestHandler`
 - **[health_check_guide.md](./health_check_guide.md)** — Health check endpoint (`GET /health`)
 - **[metrics_guide.md](./metrics_guide.md)** — Prometheus metrics endpoint (`GET /metrics`)
+- **[logger_guide.md](./logger_guide.md)** — Structured JSON logging (Loki/Grafana compatible)
 
 ---
 
