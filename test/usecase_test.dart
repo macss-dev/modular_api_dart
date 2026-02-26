@@ -1,4 +1,5 @@
 import 'package:test/test.dart';
+import 'package:modular_api/src/core/logger/logger.dart';
 import 'package:modular_api/src/core/usecase/usecase.dart';
 import 'package:modular_api/src/core/usecase/usecase_test_handler.dart';
 
@@ -9,6 +10,9 @@ class SumUseCase implements UseCase<SumInput, SumOutput> {
 
   @override
   late SumOutput output;
+
+  @override
+  ModularLogger? logger;
 
   SumUseCase({required this.input}) {
     // Default value for output (needed for schema inference elsewhere)

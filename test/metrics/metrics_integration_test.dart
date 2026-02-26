@@ -36,6 +36,8 @@ class _PingUseCase implements UseCase<_PingInput, _PingOutput> {
   final _PingInput input;
   @override
   late _PingOutput output;
+  @override
+  ModularLogger? logger;
 
   _PingUseCase(this.input);
   static _PingUseCase fromJson(Map<String, dynamic> json) =>

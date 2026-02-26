@@ -1,3 +1,5 @@
+import 'package:modular_api/src/core/logger/logger.dart';
+
 /// **Contract** — use `implements UseCase<I, O>`.
 ///
 /// Pure interface: all members must be provided by the implementor.
@@ -20,6 +22,11 @@ abstract class UseCase<I extends Input, O extends Output> {
   /// si no se inicializa en el contructor no se puede inferir el esquema
   /// para OpenApi
   late O output;
+
+  /// Logger scoped to the current HTTP request.
+  /// Set by the framework before [execute] is called.
+  /// Use `logger?.info(...)` etc. inside [execute] for structured logging.
+  ModularLogger? logger;
 
   /// Read from DTO
   /// Deserialize the use case data from JSON

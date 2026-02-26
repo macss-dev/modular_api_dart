@@ -7,7 +7,10 @@ Future<void> main(List<String> args) async {
     basePath: '/api',
     title: 'Modular API',
     version: '1.0.0',
-    metricsEnabled: true, // Opt-in Prometheus metrics at GET /metrics
+    // Opt-in Prometheus metrics at GET /metrics
+    metricsEnabled: true,
+    // Structured JSON logging (Loki/Grafana compatible)
+    logLevel: LogLevel.debug, 
   );
 
   // Register health checks (optional — /health works without any checks)
@@ -95,6 +98,9 @@ class HelloWorld implements UseCase<HelloInput, HelloOutput> {
   @override
   late HelloOutput output;
 
+  @override
+  ModularLogger? logger;
+
   HelloWorld({required this.input}) {
     output = HelloOutput();
   }
@@ -113,6 +119,7 @@ class HelloWorld implements UseCase<HelloInput, HelloOutput> {
 
   @override
   Future<void> execute() async {
+    logger?.info('Greeting user: ${input.name}');
     output = HelloOutput(message: 'Hello, ${input.name}!');
   }
 

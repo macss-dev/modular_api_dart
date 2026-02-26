@@ -1,12 +1,14 @@
 import 'dart:io';
 
+import '../logger/logger.dart';
 import 'usecase.dart';
 
 /// Handler for unit testing UseCases
 /// Returns a function that runs the unit test flow for a UseCase
 Function(Map<String, dynamic>) useCaseTestHandler(
-  UseCase Function(Map<String, dynamic>) fromJson,
-) {
+  UseCase Function(Map<String, dynamic>) fromJson, {
+  ModularLogger? logger,
+}) {
   return (Map<String, dynamic> inputJson) async {
     try {
       stdout.writeln('\n=== STARTING TEST ===');
@@ -27,7 +29,8 @@ Function(Map<String, dynamic>) useCaseTestHandler(
       }
       stdout.writeln('✓ Validation successful');
 
-      /// 3. Execute the use case
+      /// 3. Inject logger and execute the use case
+      useCase.logger = logger;
       stdout.writeln('\n[3/4] Executing UseCase...');
       await useCase.execute();
       stdout.writeln('✓ Execution completed');

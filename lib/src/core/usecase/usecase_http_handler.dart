@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import '../logger/logger.dart';
+import '../logger/logging_middleware.dart';
 import 'usecase.dart';
 import 'use_case_exception.dart';
 
@@ -28,10 +30,13 @@ Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
         );
       }
 
-      // 3. Execute the use case
+      // 3. Inject logger from middleware context
+      useCase.logger = req.context[loggerContextKey] as ModularLogger?;
+
+      // 4. Execute the use case
       await useCase.execute();
 
-      // 4. Serialize the response and return with the appropriate status code
+      // 5. Serialize the response and return with the appropriate status code
       final statusCode = useCase.output.statusCode;
       return Response(
         statusCode,
