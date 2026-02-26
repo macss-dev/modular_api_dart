@@ -61,8 +61,7 @@ void main() {
       expect(lines.length, 5);
     });
 
-    test('logLevel=warning suppresses notice, info, debug (total silence)',
-        () {
+    test('logLevel=warning suppresses notice, info, debug (total silence)', () {
       final logger = RequestScopedLogger(
         traceId: 'trace-1',
         logLevel: LogLevel.warning,
@@ -324,8 +323,7 @@ void main() {
         }
 
         final json = jsonDecode(buf.toString().trim()) as Map<String, dynamic>;
-        expect(json['level'], name,
-            reason: 'level should be "$name"');
+        expect(json['level'], name, reason: 'level should be "$name"');
         expect(json['severity'], severity,
             reason: 'severity for $name should be $severity');
       }
@@ -359,7 +357,8 @@ void main() {
       expect(json['trace_id'], 'trace-req');
     });
 
-    test('logResponse emits response fields: method, route, status, duration_ms',
+    test(
+        'logResponse emits response fields: method, route, status, duration_ms',
         () {
       final logger = RequestScopedLogger(
         traceId: 'trace-res',

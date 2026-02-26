@@ -31,8 +31,7 @@ Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
       }
 
       // 3. Inject logger from middleware context
-      useCase.logger =
-          req.context[loggerContextKey] as ModularLogger?;
+      useCase.logger = req.context[loggerContextKey] as ModularLogger?;
 
       // 4. Execute the use case
       await useCase.execute();

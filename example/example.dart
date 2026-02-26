@@ -8,7 +8,8 @@ Future<void> main(List<String> args) async {
     title: 'Modular API',
     version: '1.0.0',
     metricsEnabled: true, // Opt-in Prometheus metrics at GET /metrics
-    logLevel: LogLevel.debug, // Structured JSON logging (Loki/Grafana compatible)
+    logLevel:
+        LogLevel.debug, // Structured JSON logging (Loki/Grafana compatible)
   );
 
   // Register health checks (optional — /health works without any checks)

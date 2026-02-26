@@ -14,7 +14,8 @@ void main() {
       final pattern = RegExp(
         r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
       );
-      expect(uuid, matches(pattern), reason: 'UUID "$uuid" does not match v4 format');
+      expect(uuid, matches(pattern),
+          reason: 'UUID "$uuid" does not match v4 format');
     });
 
     test('version digit (position 14) is always 4', () {
@@ -30,7 +31,8 @@ void main() {
         expect(
           ['8', '9', 'a', 'b'].contains(uuid[19]),
           isTrue,
-          reason: 'UUID "$uuid" variant digit "${uuid[19]}" is not in [8,9,a,b]',
+          reason:
+              'UUID "$uuid" variant digit "${uuid[19]}" is not in [8,9,a,b]',
         );
       }
     });
