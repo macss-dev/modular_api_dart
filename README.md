@@ -5,7 +5,7 @@
 Use-case centric toolkit for building modular APIs with Shelf.  
 Define `UseCase` classes (input → validate → execute → output), connect them to HTTP routes, and get automatic Swagger/OpenAPI documentation.
 
-> Also available in **TypeScript**: [modular_api_ts](https://github.com/macss-dev/modular_api_ts)
+> Also available in **TypeScript**: [@macss/modular-api](https://www.npmjs.com/package/@macss/modular-api)
 
 ---
 
