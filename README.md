@@ -58,6 +58,7 @@ See `example/example.dart` for the full implementation including Input, Output, 
 - Swagger UI at `/docs` — auto-generated from registered use cases
 - Health check at `GET /health` — [IETF Health Check Response Format](doc/health_check_guide.md)
 - Prometheus metrics at `GET /metrics` — [Prometheus exposition format](doc/metrics_guide.md)
+- Structured JSON logging — Loki/Grafana compatible, [request-scoped with trace_id](doc/logger_guide.md)
 - All endpoints default to `POST` (configurable per use case)
 
 ---
@@ -66,7 +67,7 @@ See `example/example.dart` for the full implementation including Input, Output, 
 
 ```yaml
 dependencies:
-  modular_api: ^0.1.0
+  modular_api: ^0.3.0
 ```
 
 ```bash
@@ -143,6 +144,7 @@ HTTP Request → ModularApi → Module → UseCase → Business Logic → Output
 - [doc/testing_guide.md](doc/testing_guide.md) — Testing guide
 - [doc/health_check_guide.md](doc/health_check_guide.md) — Health check endpoint
 - [doc/metrics_guide.md](doc/metrics_guide.md) — Prometheus metrics endpoint
+- [doc/logger_guide.md](doc/logger_guide.md) — Structured JSON logger
 
 ---
 
