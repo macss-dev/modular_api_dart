@@ -53,7 +53,6 @@ See `example/example.dart` for the full implementation including Input, Output, 
 - `Output.statusCode` — custom HTTP status codes per response
 - `UseCaseException` — structured error handling (status code, message, error code, details)
 - `ModularApi` + `ModuleBuilder` — module registration and routing
-- `useCaseTestHandler` — unit test helper (no HTTP server needed)
 - `cors()` middleware — built-in CORS support
 - Swagger UI at `/docs` — auto-generated from registered use cases
 - Health check at `GET /health` — [IETF Health Check Response Format](doc/health_check_guide.md)
@@ -102,16 +101,14 @@ Future<void> execute() async {
 ## Testing
 
 ```dart
-import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
 
 void main() {
   test('HelloWorld returns greeting', () async {
-    final handler = useCaseTestHandler(HelloWorld.fromJson);
-    final response = await handler({'name': 'World'});
-
-    expect(response.statusCode, 200);
-    expect(response.body['message'], 'Hello, World!');
+    final useCase = HelloWorld(HelloInput(name: 'World'));
+    expect(useCase.validate(), isNull);
+    await useCase.execute();
+    expect(useCase.output.message, 'Hello, World!');
   });
 }
 ```

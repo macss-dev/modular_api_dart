@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:modular_api/src/core/logger/logger.dart';
 import 'package:modular_api/src/core/usecase/usecase.dart';
-import 'package:modular_api/src/core/usecase/usecase_test_handler.dart';
 
 /// Simple UseCase that sums two integers
 class SumUseCase implements UseCase<SumInput, SumOutput> {
@@ -101,18 +100,18 @@ class SumOutput implements Output {
 }
 
 void main() {
-  final handler = useCaseTestHandler((json) => SumUseCase.fromJson(json));
-
   test(
-    'SumUseCase returns success and correct result when inputs provided',
+    'SumUseCase returns correct result when inputs provided',
     () async {
-      final ok = await handler({'a': 3, 'b': 4});
-      expect(ok, true);
+      final useCase = SumUseCase(input: SumInput(a: 3, b: 4));
+      expect(useCase.validate(), isNull);
+      await useCase.execute();
+      expect(useCase.output.resultado, equals(7));
     },
   );
 
   test('SumUseCase validation fails when a parameter is missing', () async {
-    final ok = await handler({'a': 5}); // missing 'b'
-    expect(ok, false);
+    final useCase = SumUseCase(input: SumInput(a: 5, b: null));
+    expect(useCase.validate(), isNotNull);
   });
 }

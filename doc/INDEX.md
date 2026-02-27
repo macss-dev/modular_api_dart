@@ -43,7 +43,7 @@ Each stage must be tested before moving to the next.
 **Steps**:
 1. Create Input/Output DTOs following the DTO guide
 2. Implement UseCase class extending `UseCase<Input, Output>`
-3. Write unit tests using `useCaseTestHandler`
+3. Write unit tests using direct constructor injection
 4. Implement `execute()` method with business logic
 5. Test and refactor until all tests pass
 
@@ -99,7 +99,7 @@ await api.serve(port: 8080);
 - **[AGENTS.md](../AGENTS.md)** — Framework overview, ModularApi usage, module registration
 - **[usecase_dto_guide.md](./usecase_dto_guide.md)** — Creating Input/Output DTOs
 - **[usecase_implementation.md](./usecase_implementation.md)** — Implementing UseCases
-- **[testing_guide.md](./testing_guide.md)** — Testing UseCases with `useCaseTestHandler`
+- **[testing_guide.md](./testing_guide.md)** — Testing UseCases with direct constructor injection
 - **[health_check_guide.md](./health_check_guide.md)** — Health check endpoint (`GET /health`)
 - **[metrics_guide.md](./metrics_guide.md)** — Prometheus metrics endpoint (`GET /metrics`)
 - **[logger_guide.md](./logger_guide.md)** — Structured JSON logging (Loki/Grafana compatible)

@@ -10,8 +10,6 @@ export 'package:shelf/shelf.dart' show Middleware, Handler, Request, Response;
 export 'src/core/modular_api.dart' show ModularApi, ModuleBuilder;
 export 'src/core/usecase/usecase.dart' show UseCase, Input, Output;
 export 'src/core/usecase/use_case_exception.dart' show UseCaseException;
-export 'src/core/usecase/usecase_test_handler.dart' show useCaseTestHandler;
-
 // Logger
 export 'src/core/logger/logger.dart' show LogLevel, ModularLogger;
 

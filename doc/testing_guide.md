@@ -1,19 +1,23 @@
 # UseCase Testing Guide
 
-Quick guide for writing unit tests for UseCases using `useCaseTestHandler`.
+Guide for writing unit tests for UseCases using direct constructor injection.
 
 ---
 
-## Basic Setup
+## Core Pattern
+
+Test UseCases by constructing them directly with their dependencies. This allows injecting fakes/mocks instead of real infrastructure, keeping tests fast and isolated.
 
 ```dart
-import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('MyUseCase', () {
     test('test description', () async {
-      // Test code here
+      final useCase = MyUseCase(MyInput(field: 'value'));
+      expect(useCase.validate(), isNull);
+      final output = await useCase.execute();
+      expect(output.result, equals('expected'));
     });
   });
 }
@@ -21,37 +25,15 @@ void main() {
 
 ---
 
-## Using useCaseTestHandler
-
-The `useCaseTestHandler` creates a test function that:
-1. Builds the UseCase from JSON input
-2. Validates the input data
-3. Executes the use case
-4. Returns `true` if successful, `false` if validation fails or an exception occurs
-
-### Basic Pattern
-
-```dart
-test('should execute successfully with valid input', () async {
-  // 1. Prepare input data
-  final input = {'field1': 'value1', 'field2': 42};
-  
-  // 2. Create test handler
-  final handler = useCaseTestHandler(MyUseCase.fromJson);
-  
-  // 3. Execute and assert
-  final result = await handler(input);
-  expect(result, isTrue);
-});
-```
-
----
-
 ## Complete Example
 
-Assuming you have this UseCase:
+Assuming you have this UseCase with a repository dependency:
 
 ```dart
+abstract class SumRepository {
+  Future<void> saveResult(int result);
+}
+
 class SumInput extends Input {
   final int a;
   final int b;
@@ -88,6 +70,9 @@ class SumOutput extends Output {
   }
   
   @override
+  int get statusCode => 200;
+  
+  @override
   Map<String, dynamic> toJson() => {'result': result};
   
   @override
@@ -102,17 +87,49 @@ class SumOutput extends Output {
   }
 }
 
-class SumNumbers extends UseCase<SumInput, SumOutput> {
-  SumNumbers(super.input);
-  
-  static SumNumbers fromJson(Map<String, dynamic> json) {
-    return SumNumbers(SumInput.fromJson(json));
-  }
-  
+class SumNumbers implements UseCase<SumInput, SumOutput> {
   @override
-  Future<SumOutput> execute() async {
+  final SumInput input;
+  @override
+  late SumOutput output;
+  @override
+  ModularLogger? logger;
+
+  final SumRepository repository;
+
+  SumNumbers(this.input, {required this.repository});
+
+  static SumNumbers fromJson(Map<String, dynamic> json) {
+    return SumNumbers(SumInput.fromJson(json), repository: RealSumRepository());
+  }
+
+  @override
+  String? validate() {
+    if (input.a < 0 || input.b < 0) return 'values must be non-negative';
+    return null;
+  }
+
+  @override
+  Future<void> execute() async {
     final result = input.a + input.b;
-    return SumOutput(result: result);
+    await repository.saveResult(result);
+    output = SumOutput(result: result);
+  }
+
+  @override
+  Map<String, dynamic> toJson() => output.toJson();
+}
+```
+
+### Fake Repository
+
+```dart
+class FakeSumRepository implements SumRepository {
+  final List<int> savedResults = [];
+
+  @override
+  Future<void> saveResult(int result) async {
+    savedResults.add(result);
   }
 }
 ```
@@ -120,37 +137,50 @@ class SumNumbers extends UseCase<SumInput, SumOutput> {
 ### Test File
 
 ```dart
-import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
 import '../lib/usecases/sum_numbers.dart';
 
 void main() {
+  late FakeSumRepository fakeRepo;
+
+  setUp(() {
+    fakeRepo = FakeSumRepository();
+  });
+
   group('SumNumbers UseCase', () {
     test('should sum two positive numbers', () async {
-      final input = {'a': 5, 'b': 3};
-      final handler = useCaseTestHandler(SumNumbers.fromJson);
-      
-      final result = await handler(input);
-      
-      expect(result, isTrue);
+      // ✅ Inject fake directly via constructor
+      final useCase = SumNumbers(
+        SumInput(a: 5, b: 3),
+        repository: fakeRepo,
+      );
+
+      expect(useCase.validate(), isNull);
+      await useCase.execute();
+
+      expect(useCase.output.result, equals(8));
+      expect(fakeRepo.savedResults, equals([8]));
     });
 
-    test('should handle negative numbers', () async {
-      final input = {'a': -10, 'b': 5};
-      final handler = useCaseTestHandler(SumNumbers.fromJson);
-      
-      final result = await handler(input);
-      
-      expect(result, isTrue);
+    test('should handle zero values', () async {
+      final useCase = SumNumbers(
+        SumInput(a: 0, b: 0),
+        repository: fakeRepo,
+      );
+
+      await useCase.execute();
+
+      expect(useCase.output.result, equals(0));
     });
 
-    test('should handle zero', () async {
-      final input = {'a': 0, 'b': 0};
-      final handler = useCaseTestHandler(SumNumbers.fromJson);
-      
-      final result = await handler(input);
-      
-      expect(result, isTrue);
+    test('should reject negative values', () {
+      final useCase = SumNumbers(
+        SumInput(a: -1, b: 3),
+        repository: fakeRepo,
+      );
+
+      expect(useCase.validate(), isNotNull);
+      expect(useCase.validate(), contains('non-negative'));
     });
   });
 }
@@ -158,19 +188,28 @@ void main() {
 
 ---
 
-## Testing Validation Failures
+## Testing Validation
 
-When input validation fails, `useCaseTestHandler` returns `false`:
+Call `validate()` directly and assert on the returned string:
 
 ```dart
-test('should return false when validation fails', () async {
-  // Assuming your UseCase validates that 'age' must be >= 18
-  final input = {'name': 'John', 'age': 15};
-  final handler = useCaseTestHandler(CreateUser.fromJson);
-  
-  final result = await handler(input);
-  
-  expect(result, isFalse);
+test('should return error message when age is under 18', () {
+  final useCase = CreateUser(
+    CreateUserInput(name: 'John', age: 15),
+    repository: fakeRepo,
+  );
+
+  expect(useCase.validate(), isNotNull);
+  expect(useCase.validate(), contains('18'));
+});
+
+test('should return null when input is valid', () {
+  final useCase = CreateUser(
+    CreateUserInput(name: 'John', age: 20),
+    repository: fakeRepo,
+  );
+
+  expect(useCase.validate(), isNull);
 });
 ```
 
@@ -178,108 +217,61 @@ test('should return false when validation fails', () async {
 
 ## Testing Exceptions
 
-When an exception is thrown during execution, `useCaseTestHandler` returns `false`:
+Use `throwsA` to assert on exceptions thrown during `execute()`:
 
 ```dart
-test('should return false when exception occurs', () async {
-  // Assuming the UseCase throws an exception for invalid data
-  final input = {'userId': 'non-existent-id'};
-  final handler = useCaseTestHandler(GetUser.fromJson);
-  
-  final result = await handler(input);
-  
-  expect(result, isFalse);
-});
-```
-
----
-
-## Multiple Test Cases
-
-```dart
-void main() {
-  group('CalculateDiscount UseCase', () {
-    final handler = useCaseTestHandler(CalculateDiscount.fromJson);
-
-    test('should apply 10% discount for regular customers', () async {
-      final result = await handler({
-        'amount': 100.0,
-        'customerType': 'regular',
-      });
-      expect(result, isTrue);
-    });
-
-    test('should apply 20% discount for premium customers', () async {
-      final result = await handler({
-        'amount': 100.0,
-        'customerType': 'premium',
-      });
-      expect(result, isTrue);
-    });
-
-    test('should reject negative amounts', () async {
-      final result = await handler({
-        'amount': -50.0,
-        'customerType': 'regular',
-      });
-      expect(result, isFalse);
-    });
-  });
+class FakeFailingRepository implements SumRepository {
+  @override
+  Future<void> saveResult(int result) async {
+    throw UseCaseException(
+      statusCode: 503,
+      message: 'Database unavailable',
+      errorCode: 'DB_ERROR',
+    );
+  }
 }
-```
 
----
-
-## Testing with Dependencies
-
-If your UseCase has dependencies (DB, repositories), create them in the test:
-
-```dart
-test('should retrieve user from database', () async {
-  // Mock or create real dependencies
-  final mockDb = MockDbClient();
-  
-  // Create a custom test that injects dependencies
-  final input = {'userId': '123'};
-  final useCase = GetUser(
-    GetUserInput.fromJson(input),
-    db: mockDb,
+test('should throw UseCaseException when repository fails', () {
+  final useCase = SumNumbers(
+    SumInput(a: 5, b: 3),
+    repository: FakeFailingRepository(),
   );
-  
-  final output = await useCase.execute();
-  
-  expect(output.userId, equals('123'));
+
+  expect(
+    () => useCase.execute(),
+    throwsA(isA<UseCaseException>()),
+  );
 });
 ```
 
-**Note:** For complex dependency testing, you may want to test the UseCase directly instead of using `useCaseTestHandler`.
-
 ---
 
-## Quick Reference
+## Testing Two Approaches
 
-| Test Scenario | Expected Result |
-|---------------|-----------------|
-| Valid input, successful execution | `result == true` |
-| Invalid input (validation fails) | `result == false` |
-| Exception thrown during execution | `result == false` |
-| Business logic error | `result == false` |
+| Approach | When to use | How |
+|----------|-------------|-----|
+| **Unit test (constructor)** | Always — default for business logic | `SumNumbers(input, repository: fakeRepo)` |
+| **Integration test (fromJson)** | When testing with real infrastructure | `SumNumbers.fromJson(json)` directly |
+
+Unit tests run fast and require no external infrastructure. Integration tests are reserved for validating end-to-end behavior with real databases and services.
 
 ---
 
 ## Best Practices
 
-1. **One assertion per test** — Test one scenario at a time
-2. **Descriptive test names** — Use `should [expected behavior] when [condition]`
-3. **Group related tests** — Use `group()` to organize tests by UseCase
-4. **Test edge cases** — Include boundary values, null cases, empty strings, etc.
-5. **Test both success and failure paths** — Don't just test happy paths
+1. **Inject fakes via constructor** — Never use `fromJson` in unit tests; it wires real adapters
+2. **One assertion per test** — Test one scenario at a time
+3. **Descriptive test names** — Use `should [expected behavior] when [condition]`
+4. **Group related tests** — Use `group()` to organize tests by UseCase
+5. **Test edge cases** — Include boundary values, null cases, empty strings, etc.
+6. **Assert on output AND side effects** — Check `useCase.output` and fake state (e.g. `fakeRepo.savedResults`)
+7. **Test both success and failure paths** — Don't just test happy paths
 
 ---
 
 ## Running Tests
 
-```powershell
+```bash
 # Run all tests
 dart test
 
@@ -303,22 +295,24 @@ import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
 
 void main() {
+  late FakeRepository fakeRepo;
+
+  setUp(() => fakeRepo = FakeRepository());
+
   group('MyUseCase', () {
     test('should succeed with valid input', () async {
-      final input = {'field': 'value'};
-      final handler = useCaseTestHandler(MyUseCase.fromJson);
-      final result = await handler(input);
-      expect(result, isTrue);
+      final useCase = MyUseCase(MyInput(field: 'value'), repository: fakeRepo);
+      expect(useCase.validate(), isNull);
+      await useCase.execute();
+      expect(useCase.output.result, equals('expected'));
     });
-    
-    test('should fail with invalid input', () async {
-      final input = {'field': 'invalid'};
-      final handler = useCaseTestHandler(MyUseCase.fromJson);
-      final result = await handler(input);
-      expect(result, isFalse);
+
+    test('should fail validation with invalid input', () {
+      final useCase = MyUseCase(MyInput(field: ''), repository: fakeRepo);
+      expect(useCase.validate(), isNotNull);
     });
   });
 }
 ```
 
-That's it! Simple, focused unit tests for your UseCases.
+That's it! Direct constructor injection gives you full control over dependencies in tests.

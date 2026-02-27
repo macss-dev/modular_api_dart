@@ -486,26 +486,21 @@ await TokenVault.deleteRefresh();
 
 ## Testing
 
-Use `useCaseTestHandler` for unit testing without HTTP server:
+Test UseCases directly by constructing them with fake/mock dependencies:
 
 **📖 Complete Guide:** [doc/testing_guide.md](doc/testing_guide.md)
 
 **Example:**
 ```dart
-import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
-import 'dart:convert';
 
 void main() {
   test('MyUseCase should return expected output', () async {
-    final input = {'name': 'World'};
-    final handler = useCaseTestHandler(MyUseCase.fromJson);
-    
-    final response = await handler(input);
-    
-    expect(response.statusCode, equals(200));
-    final body = jsonDecode(await response.readAsString());
-    expect(body['message'], equals('Hello, World!'));
+    // ✅ Inject fake directly via constructor — no real infrastructure needed
+    final useCase = MyUseCase(MyInput(name: 'World'), repository: FakeRepo());
+    expect(useCase.validate(), isNull);
+    await useCase.execute();
+    expect(useCase.output.message, equals('Hello, World!'));
   });
 }
 ```
@@ -531,7 +526,7 @@ void main() {
 - Show UseCase implementation
 - Show module builder function (or update existing one)
 - Show registration in ModularApi using the builder
-- Provide test example using `useCaseTestHandler`
+- Provide test example using direct constructor injection with fakes
 
 ### Request: "Add validation to my use case"
 
@@ -572,10 +567,10 @@ void main() {
 ### Request: "How do I test this?"
 
 **Actions:**
-1. Show `useCaseTestHandler` helper
+1. Show direct constructor injection pattern with fake dependencies
 2. Provide complete test example with `package:test`
-3. Show how to test validation errors
-4. Explain testing without HTTP server (unit test level)
+3. Show how to test validation errors with `useCase.validate()`
+4. Explain testing without HTTP server (pure unit tests)
 
 ---
 
@@ -728,7 +723,7 @@ Help users understand these differences:
 | HTTP Method | POST (default) | Any | Any |
 | Validation | Manual in execute() | Middleware | Annotations |
 | DI | Manual injection | Built-in | Built-in |
-| Testing | useCaseTestHandler | Supertest | MockMvc |
+| Testing | Constructor injection | Supertest | MockMvc |
 
 ---
 
@@ -881,7 +876,7 @@ dart compile exe bin/main.dart -o build/server
 **Essential Guides:**
 - **[doc/usecase_dto_guide.md](doc/usecase_dto_guide.md)** — Creating Input/Output DTOs
 - **[doc/usecase_implementation.md](doc/usecase_implementation.md)** — Implementing UseCases
-- **[doc/testing_guide.md](doc/testing_guide.md)** — Testing with useCaseTestHandler
+- **[doc/testing_guide.md](doc/testing_guide.md)** — Testing UseCases with direct constructor injection
 - **[doc/http_client_guide.md](doc/http_client_guide.md)** — Using httpClient (Flutter & Dart)
 - **[doc/authentication_guide.md](doc/authentication_guide.md)** — Token management basics
 - **[doc/auth_implementation_guide.md](doc/auth_implementation_guide.md)** — Complete JWT auth system
@@ -928,7 +923,7 @@ When assisting users:
 1. ✅ **Always generate complete code** — Include all three DTO methods, full UseCase, and registration
 2. ✅ **Reference the detailed guides** — Point to specific documentation files
 3. ✅ **Follow the pattern** — Input → UseCase → Output (no HTTP in business logic)
-4. ✅ **Include tests** — Show useCaseTestHandler examples
+4. ✅ **Include tests** — Show direct constructor injection examples with fakes
 5. ✅ **Suggest file organization** — Especially for multi-module projects
 6. ✅ **Explain automatic features** — Health endpoint, docs, error handling
 7. ✅ **Validate schemas** — Ensure toSchema() matches class properties
