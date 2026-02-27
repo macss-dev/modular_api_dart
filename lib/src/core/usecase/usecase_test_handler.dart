@@ -1,14 +1,20 @@
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:shelf/shelf.dart';
 
 import '../logger/logger.dart';
 import 'usecase.dart';
 
 /// Handler for unit testing UseCases
 /// Returns a function that runs the unit test flow for a UseCase
-Function(Map<String, dynamic>) useCaseTestHandler(
+/// and returns a [Response] so callers can assert on status code and body.
+Future<Response> Function(Map<String, dynamic>) useCaseTestHandler(
   UseCase Function(Map<String, dynamic>) fromJson, {
   ModularLogger? logger,
 }) {
+  const jsonHeaders = {'content-type': 'application/json; charset=utf-8'};
+
   return (Map<String, dynamic> inputJson) async {
     try {
       stdout.writeln('\n=== STARTING TEST ===');
@@ -24,25 +30,33 @@ Function(Map<String, dynamic>) useCaseTestHandler(
       final validationError = useCase.validate();
       if (validationError != null) {
         stderr.writeln('✗ VALIDATION ERROR: $validationError');
-        stderr.writeln('\n=== TEST FAILED ===\n');
-        return false;
+        stderr.writeln('\n=== TEST FAILED (validation) ===\n');
+        return Response(
+          400,
+          headers: jsonHeaders,
+          body: jsonEncode({'error': validationError}),
+        );
       }
       stdout.writeln('✓ Validation successful');
 
       /// 3. Inject logger and execute the use case
       useCase.logger = logger;
       stdout.writeln('\n[3/4] Executing UseCase...');
-      await useCase.execute();
+      final output = await useCase.execute();
       stdout.writeln('✓ Execution completed');
 
       // 4. Convert the response to JSON (optional, for inspection)
       stdout.writeln('\n[4/4] Generating JSON response...');
-      final outputJson = useCase.toJson();
+      final outputJson = output.toJson();
       stdout.writeln('✓ Response generated: $outputJson');
 
       // 5. Everything went well
       stdout.writeln('\n=== TEST SUCCEEDED ===\n');
-      return true;
+      return Response(
+        output.statusCode,
+        headers: jsonHeaders,
+        body: jsonEncode(outputJson),
+      );
     } catch (e, stackTrace) {
       // Capture and display detailed error information
       stderr.writeln('\n${'=' * 80}');
@@ -56,7 +70,11 @@ Function(Map<String, dynamic>) useCaseTestHandler(
       stderr.writeln('\n${'=' * 80}');
       stderr.writeln('=== TEST FAILED ===');
       stderr.writeln('=' * 80);
-      return false;
+      return Response(
+        500,
+        headers: jsonHeaders,
+        body: jsonEncode({'error': 'Internal server error'}),
+      );
     }
   };
 }

@@ -96,14 +96,9 @@ class HelloWorld implements UseCase<HelloInput, HelloOutput> {
   final HelloInput input;
 
   @override
-  late HelloOutput output;
-
-  @override
   ModularLogger? logger;
 
-  HelloWorld({required this.input}) {
-    output = HelloOutput();
-  }
+  HelloWorld({required this.input});
 
   static HelloWorld fromJson(Map<String, dynamic> json) {
     return HelloWorld(input: HelloInput.fromJson(json));
@@ -118,13 +113,10 @@ class HelloWorld implements UseCase<HelloInput, HelloOutput> {
   }
 
   @override
-  Future<void> execute() async {
+  Future<HelloOutput> execute() async {
     logger?.info('Greeting user: ${input.name}');
-    output = HelloOutput(message: 'Hello, ${input.name}!');
+    return HelloOutput(message: 'Hello, ${input.name}!');
   }
-
-  @override
-  Map<String, dynamic> toJson() => output.toJson();
 }
 
 // ─── Example Health Check ─────────────────────────────────────────────────────

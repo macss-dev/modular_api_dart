@@ -33,15 +33,14 @@ Handler useCaseHttpHandler(UseCase Function(Map<String, dynamic>) fromJson) {
       // 3. Inject logger from middleware context
       useCase.logger = req.context[loggerContextKey] as ModularLogger?;
 
-      // 4. Execute the use case
-      await useCase.execute();
+      // 4. Execute the use case and capture the output
+      final output = await useCase.execute();
 
       // 5. Serialize the response and return with the appropriate status code
-      final statusCode = useCase.output.statusCode;
       return Response(
-        statusCode,
+        output.statusCode,
         headers: jsonHeaders,
-        body: jsonEncode(useCase.toJson()),
+        body: jsonEncode(output.toJson()),
       );
     } on UseCaseException catch (e) {
       // Handle known business logic exceptions with custom status codes

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:modular_api/src/core/logger/logger.dart';
 import 'package:modular_api/src/core/usecase/usecase.dart';
@@ -9,20 +11,12 @@ class SumUseCase implements UseCase<SumInput, SumOutput> {
   final SumInput input;
 
   @override
-  late SumOutput output;
-
-  @override
   ModularLogger? logger;
 
-  SumUseCase({required this.input}) {
-    // Default value for output (needed for schema inference elsewhere)
-    output = SumOutput(resultado: 0);
-  }
+  SumUseCase({required this.input});
 
   factory SumUseCase.fromJson(Map<String, dynamic> json) {
-    final uc = SumUseCase(input: SumInput.fromJson(json));
-    uc.output = SumOutput(resultado: 0);
-    return uc;
+    return SumUseCase(input: SumInput.fromJson(json));
   }
 
   @override
@@ -33,14 +27,11 @@ class SumUseCase implements UseCase<SumInput, SumOutput> {
   }
 
   @override
-  Future<void> execute() async {
+  Future<SumOutput> execute() async {
     final a = input.a ?? 0;
     final b = input.b ?? 0;
-    output = SumOutput(resultado: a + b);
+    return SumOutput(resultado: a + b);
   }
-
-  @override
-  Map<String, dynamic> toJson() => output.toJson();
 }
 
 class SumInput implements Input {
@@ -106,13 +97,15 @@ void main() {
   test(
     'SumUseCase returns success and correct result when inputs provided',
     () async {
-      final ok = await handler({'a': 3, 'b': 4});
-      expect(ok, true);
+      final response = await handler({'a': 3, 'b': 4});
+      expect(response.statusCode, equals(200));
+      final body = jsonDecode(await response.readAsString()) as Map<String, dynamic>;
+      expect(body['resultado'], equals(7));
     },
   );
 
   test('SumUseCase validation fails when a parameter is missing', () async {
-    final ok = await handler({'a': 5}); // missing 'b'
-    expect(ok, false);
+    final response = await handler({'a': 5}); // missing 'b'
+    expect(response.statusCode, equals(400));
   });
 }

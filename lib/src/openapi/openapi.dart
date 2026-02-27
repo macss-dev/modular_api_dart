@@ -50,7 +50,7 @@ class OpenApi {
       final inputSchema = _inferInputSchema(r);
 
       // 2) Obtain output schema (or generic fallback)
-      final outputSchema = _inferOutputSchema(r);
+      final outputSchema = await _inferOutputSchema(r);
 
       // 3) Name schemas for components (reusables)
       final inputRefName = '${r.module}_${r.name}_Input';
@@ -119,17 +119,18 @@ class OpenApi {
     }
   }
 
-  static Map<String, dynamic> _inferOutputSchema(UseCaseRegistration r) {
+  static Future<Map<String, dynamic>> _inferOutputSchema(UseCaseRegistration r) async {
     try {
       final uc = r.factory(<String, dynamic>{});
-      final schema = uc.output.toSchema();
+      final output = await uc.execute();
+      final schema = output.toSchema();
       // Sanitize: ensure at least 'type: object'
       if (schema['type'] == null) {
         schema['type'] = 'object';
       }
       return schema;
     } catch (_) {
-      // Fallback if fromJson throws
+      // Fallback if fromJson or execute throws
       return {'type': 'object', 'properties': {}};
     }
   }
