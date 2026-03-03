@@ -83,20 +83,24 @@ void main() {
       );
     });
 
-    test('should work with useCaseTestHandler - exception thrown', () async {
-      final handler = useCaseTestHandler(ThrowExceptionUseCase.fromJson);
-      final result = await handler({'shouldThrow': true});
+    test('should throw UseCaseException when shouldThrow is true', () async {
+      final useCase = ThrowExceptionUseCase(
+        ThrowExceptionInput(shouldThrow: true),
+      );
 
-      // When exception is thrown, useCaseTestHandler returns false
-      expect(result, isFalse);
+      expect(
+        () => useCase.execute(),
+        throwsA(isA<UseCaseException>()),
+      );
     });
 
-    test('should work with useCaseTestHandler - no exception', () async {
-      final handler = useCaseTestHandler(ThrowExceptionUseCase.fromJson);
-      final result = await handler({'shouldThrow': false});
+    test('should execute successfully when shouldThrow is false', () async {
+      final useCase = ThrowExceptionUseCase(
+        ThrowExceptionInput(shouldThrow: false),
+      );
 
-      // When no exception, useCaseTestHandler returns true
-      expect(result, isTrue);
+      await useCase.execute();
+      expect(useCase.output.success, isTrue);
     });
   });
 }

@@ -169,8 +169,8 @@ void main() {
     });
   });
 
-  group('useCaseTestHandler with logger', () {
-    test('passes logger to UseCase when provided', () async {
+  group('UseCase logger injection', () {
+    test('logger assigned to UseCase is used during execute()', () async {
       final buf = StringBuffer();
       final logger = RequestScopedLogger(
         traceId: 'test-handler-trace',
@@ -179,12 +179,10 @@ void main() {
         sink: buf,
       );
 
-      final handler = useCaseTestHandler(
-        EchoUseCase.fromJson,
-        logger: logger,
-      );
-      final result = await handler({'value': 'hi'});
-      expect(result, isTrue);
+      final uc = EchoUseCase(input: EchoInput(value: 'hi'));
+      uc.logger = logger;
+      await uc.execute();
+      expect(uc.output.echo, 'hi');
 
       // Verify logger was used
       final lines = buf.toString().trim().split('\n');
@@ -195,10 +193,10 @@ void main() {
       expect(hasEchoLog, isTrue);
     });
 
-    test('works without logger (default behavior)', () async {
-      final handler = useCaseTestHandler(SilentUseCase.fromJson);
-      final result = await handler({'value': 'hi'});
-      expect(result, isTrue);
+    test('UseCase works without logger assigned (default behavior)', () async {
+      final uc = SilentUseCase(input: EchoInput(value: 'hi'));
+      await uc.execute();
+      expect(uc.output.echo, 'hi');
     });
   });
 

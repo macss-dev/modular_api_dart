@@ -629,85 +629,81 @@ This creates the following endpoints:
 
 ## 🧪 Testing UseCases
 
-Use the `useCaseTestHandler` helper for unit testing:
+Test UseCases by constructing them directly with fake/mock dependencies:
 
 ```dart
 import 'package:modular_api/modular_api.dart';
 import 'package:test/test.dart';
 
+// Fake repository for testing
+class FakeUserRepository implements UserRepository {
+  final List<Map<String, dynamic>> users = [];
+
+  @override
+  Future<String> create({required String name, required String email}) async {
+    final id = 'USER_${users.length + 1}';
+    users.add({'id': id, 'name': name, 'email': email});
+    return id;
+  }
+}
+
 void main() {
+  late FakeUserRepository fakeRepo;
+
+  setUp(() => fakeRepo = FakeUserRepository());
+
   group('SumNumbers UseCase', () {
     test('should sum two numbers correctly', () async {
-      // Arrange
-      final input = {'a': 5, 'b': 3};
-      final handler = useCaseTestHandler(SumNumbers.fromJson);
-
-      // Act
-      final response = await handler(input);
-
-      // Assert
-      expect(response.statusCode, equals(200));
-      final body = jsonDecode(await response.readAsString());
-      expect(body['result'], equals(8));
+      final useCase = SumNumbers(SumInput(a: 5, b: 3));
+      expect(useCase.validate(), isNull);
+      await useCase.execute();
+      expect(useCase.output.result, equals(8));
     });
 
     test('should handle large numbers', () async {
-      final input = {'a': 1000000, 'b': 2000000};
-      final handler = useCaseTestHandler(SumNumbers.fromJson);
-
-      final response = await handler(input);
-
-      expect(response.statusCode, equals(200));
-      final body = jsonDecode(await response.readAsString());
-      expect(body['result'], equals(3000000));
+      final useCase = SumNumbers(SumInput(a: 1000000, b: 2000000));
+      await useCase.execute();
+      expect(useCase.output.result, equals(3000000));
     });
   });
 
   group('CreateUser UseCase', () {
     test('should create user with valid input', () async {
-      final input = {
-        'name': 'John Doe',
-        'email': 'john@example.com',
-        'age': 25,
-      };
-      final handler = useCaseTestHandler(CreateUser.fromJson);
+      final useCase = CreateUser(
+        CreateUserInput(name: 'John Doe', email: 'john@example.com', age: 25),
+        repository: fakeRepo,
+      );
 
-      final response = await handler(input);
+      expect(useCase.validate(), isNull);
+      await useCase.execute();
 
-      expect(response.statusCode, equals(200));
-      final body = jsonDecode(await response.readAsString());
-      expect(body['userId'], startsWith('USER_'));
-      expect(body['message'], contains('created successfully'));
+      expect(useCase.output.userId, startsWith('USER_'));
+      expect(useCase.output.message, contains('created successfully'));
+      expect(fakeRepo.users, hasLength(1));
     });
 
-    test('should reject invalid email', () async {
-      final input = {
-        'name': 'John Doe',
-        'email': 'invalid-email',
-        'age': 25,
-      };
-      final handler = useCaseTestHandler(CreateUser.fromJson);
+    test('should reject invalid email', () {
+      final useCase = CreateUser(
+        CreateUserInput(name: 'John Doe', email: 'invalid-email', age: 25),
+        repository: fakeRepo,
+      );
 
-      final response = await handler(input);
-
-      expect(response.statusCode, equals(500));
+      expect(useCase.validate(), isNotNull);
     });
 
-    test('should reject underage user', () async {
-      final input = {
-        'name': 'John Doe',
-        'email': 'john@example.com',
-        'age': 16,
-      };
-      final handler = useCaseTestHandler(CreateUser.fromJson);
+    test('should reject underage user', () {
+      final useCase = CreateUser(
+        CreateUserInput(name: 'John Doe', email: 'john@example.com', age: 16),
+        repository: fakeRepo,
+      );
 
-      final response = await handler(input);
-
-      expect(response.statusCode, equals(500));
+      expect(useCase.validate(), isNotNull);
     });
   });
 }
 ```
+
+**📖 Complete Guide:** [testing_guide.md](./testing_guide.md)
 
 ---
 
@@ -727,7 +723,7 @@ When implementing a UseCase, ensure:
 - [ ] Output DTO is properly constructed with all required fields
 - [ ] Dependencies (DB, repositories, HTTP clients) are injected via constructor
 - [ ] UseCase is registered in `ModularApi` with correct module and path
-- [ ] Unit tests are written using `useCaseTestHandler`
+- [ ] Unit tests are written using direct constructor injection with fake dependencies
 
 ---
 

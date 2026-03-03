@@ -170,13 +170,13 @@ Response logs automatically use the appropriate level:
 
 ## Testing with logger
 
-Use `useCaseTestHandler` with an optional logger:
+Assign a `RequestScopedLogger` directly to the UseCase instance in your test:
 
 ```dart
 import 'package:modular_api/modular_api.dart';
+import 'package:modular_api/src/core/logger/logger.dart';
 import 'package:test/test.dart';
 import 'dart:convert';
-import 'dart:io';
 
 void main() {
   test('UseCase logs during execution', () async {
@@ -188,10 +188,10 @@ void main() {
       sink: sink,
     );
 
-    final handler = useCaseTestHandler(MyUseCase.fromJson, logger: logger);
-    final response = await handler({'name': 'World'});
+    final useCase = MyUseCase(MyInput(name: 'World'));
+    useCase.logger = logger;
+    await useCase.execute();
 
-    expect(response.statusCode, equals(200));
     // Verify logs were emitted
     expect(sink.toString(), contains('test-trace'));
   });
