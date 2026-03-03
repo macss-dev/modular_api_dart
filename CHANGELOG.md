@@ -6,6 +6,29 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Documentation
 
+## [0.4.0] - 2026-03-03
+
+### Removed
+
+- **BREAKING:** `useCaseTestHandler` — removed from public API and deleted `lib/src/core/usecase/usecase_test_handler.dart`
+  - Testing now uses direct constructor injection: instantiate the UseCase with its Input, call `validate()`, `execute()`, and assert on `output` directly
+  - Barrel export removed from `lib/modular_api.dart`
+
+### Added
+
+- **`GET /openapi.json`** — returns the full OpenAPI 3.0 specification as `application/json`
+- **`GET /openapi.yaml`** — returns the full OpenAPI 3.0 specification as `application/x-yaml`
+- `OpenApi.openapiJson` / `OpenApi.openapiYaml` — Shelf handlers for raw spec access
+- `OpenApi.jsonToYaml()` — zero-dependency JSON-to-YAML converter
+- Spec is cached at startup alongside Swagger UI (no per-request rebuild)
+- 18 new tests: jsonToYaml unit (8), /openapi.json integration (4), /openapi.yaml integration (5), consistency (1)
+
+### Changed
+
+- Updated testing guide (`doc/testing_guide.md`) to document the constructor-injection approach
+- Updated `doc/usecase_implementation.md` and `doc/logger_guide.md` to remove `useCaseTestHandler` references
+- Updated `AGENTS.md` and `README.md` examples to reflect the new testing pattern
+
 ## [0.3.0] - 2026-02-26
 ### Added
 - **Structured JSON Logger** — request-scoped logging compatible with Loki, Grafana, Elasticsearch, and any JSON log aggregator

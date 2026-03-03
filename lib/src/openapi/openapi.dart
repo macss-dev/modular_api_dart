@@ -7,6 +7,12 @@ import 'package:shelf_swagger_ui/shelf_swagger_ui.dart';
 class OpenApi {
   static late Handler docs;
 
+  /// Cached spec as JSON string (populated by [init]).
+  static String _cachedJsonSpec = '';
+
+  /// Cached spec as YAML string (populated by [init]).
+  static String _cachedYamlSpec = '';
+
   static Future<void> init({
     String title = 'Modular API',
     required int port,
@@ -14,8 +20,151 @@ class OpenApi {
   }) async {
     final swaggerJsonString =
         await jsonStringFromSchema(title: title, servers: servers, port: port);
+    _cachedJsonSpec = swaggerJsonString;
+    _cachedYamlSpec = jsonToYaml(jsonDecode(swaggerJsonString));
     final ui = SwaggerUI(swaggerJsonString, title: title); // wrapper
     docs = ui.call;
+  }
+
+  /// Handler for GET /openapi.json — returns the OpenAPI spec as JSON.
+  static Response openapiJson(Request request) {
+    return Response.ok(
+      _cachedJsonSpec,
+      headers: {'content-type': 'application/json'},
+    );
+  }
+
+  /// Handler for GET /openapi.yaml — returns the OpenAPI spec as YAML.
+  static Response openapiYaml(Request request) {
+    return Response.ok(
+      _cachedYamlSpec,
+      headers: {'content-type': 'application/x-yaml'},
+    );
+  }
+
+  /// Converts a JSON-decoded value to a YAML string.
+  /// Zero dependencies — handles maps, lists, strings, numbers, bools, and null.
+  static String jsonToYaml(dynamic value, {int indent = 0}) {
+    final buf = StringBuffer();
+    _writeYaml(buf, value, indent, true);
+    return buf.toString();
+  }
+
+  static void _writeYaml(
+      StringBuffer buf, dynamic value, int indent, bool isRoot) {
+    final pad = '  ' * indent;
+
+    if (value is Map) {
+      if (value.isEmpty) {
+        buf.writeln('{}');
+        return;
+      }
+      if (!isRoot) buf.writeln();
+      for (final entry in value.entries) {
+        buf.write('$pad${_yamlKey(entry.key.toString())}:');
+        final v = entry.value;
+        if (v is Map || v is List) {
+          _writeYaml(buf, v, indent + 1, false);
+        } else {
+          buf.write(' ');
+          _writeYamlScalar(buf, v);
+          buf.writeln();
+        }
+      }
+    } else if (value is List) {
+      if (value.isEmpty) {
+        buf.writeln('[]');
+        return;
+      }
+      if (!isRoot) buf.writeln();
+      for (final item in value) {
+        if (item is Map || item is List) {
+          buf.write('$pad- ');
+          // For map items after '- ', write inline-ish with reduced indent
+          if (item is Map && item.isNotEmpty) {
+            var first = true;
+            for (final e in item.entries) {
+              if (first) {
+                buf.write('${_yamlKey(e.key.toString())}:');
+                first = false;
+              } else {
+                buf.write('$pad  ${_yamlKey(e.key.toString())}:');
+              }
+              final v = e.value;
+              if (v is Map || v is List) {
+                _writeYaml(buf, v, indent + 2, false);
+              } else {
+                buf.write(' ');
+                _writeYamlScalar(buf, v);
+                buf.writeln();
+              }
+            }
+          } else {
+            _writeYaml(buf, item, indent + 1, false);
+          }
+        } else {
+          buf.write('$pad- ');
+          _writeYamlScalar(buf, item);
+          buf.writeln();
+        }
+      }
+    } else {
+      _writeYamlScalar(buf, value);
+      buf.writeln();
+    }
+  }
+
+  /// Writes a scalar YAML value (string, number, bool, null).
+  static void _writeYamlScalar(StringBuffer buf, dynamic value) {
+    if (value == null) {
+      buf.write('null');
+    } else if (value is bool) {
+      buf.write(value ? 'true' : 'false');
+    } else if (value is num) {
+      buf.write(value);
+    } else {
+      final s = value.toString();
+      if (_needsQuoting(s)) {
+        buf.write("'${s.replaceAll("'", "''")}'");
+      } else {
+        buf.write(s);
+      }
+    }
+  }
+
+  /// Returns the key formatted for YAML. Quotes if necessary.
+  static String _yamlKey(String key) {
+    if (_needsQuoting(key)) {
+      return "'${key.replaceAll("'", "''")}'";
+    }
+    return key;
+  }
+
+  /// Determines if a string value needs quoting in YAML.
+  static bool _needsQuoting(String s) {
+    if (s.isEmpty) return true;
+    // Reserved YAML words
+    const reserved = {
+      'true',
+      'false',
+      'null',
+      'yes',
+      'no',
+      'on',
+      'off',
+      'y',
+      'n',
+    };
+    if (reserved.contains(s.toLowerCase())) return true;
+    // Contains special chars that could break YAML parsing
+    if (s.contains(RegExp(r'[:{}\[\],&*?|>!%#@`"\\]'))) return true;
+    // Starts with special chars
+    if (s.startsWith(RegExp(r'[-? ]'))) return true;
+    // Looks like a number but is a string
+    if (num.tryParse(s) != null) return true;
+    // Contains newlines
+    if (s.contains('\n')) return true;
+    return false;
   }
 
   /// Builds the OpenAPI 3.0.0 specification

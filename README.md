@@ -40,7 +40,9 @@ curl -X POST http://localhost:8080/api/greetings/hello \
 ```
 
 **Docs** → `http://localhost:8080/docs`  
-**Health** → `http://localhost:8080/health`
+**Health** → `http://localhost:8080/health`  
+**OpenAPI JSON** → `http://localhost:8080/openapi.json` *(also /openapi.yaml)*
+**Metrics** → `http://localhost:8080/metrics` *(opt-in)*
 
 See `example/example.dart` for the full implementation including Input, Output, UseCase with `validate()`, and the builder.
 
@@ -55,6 +57,7 @@ See `example/example.dart` for the full implementation including Input, Output, 
 - `ModularApi` + `ModuleBuilder` — module registration and routing
 - `cors()` middleware — built-in CORS support
 - Swagger UI at `/docs` — auto-generated from registered use cases
+- OpenAPI spec at `/openapi.json` and `/openapi.yaml` — raw spec download
 - Health check at `GET /health` — [IETF Health Check Response Format](doc/health_check_guide.md)
 - Prometheus metrics at `GET /metrics` — [Prometheus exposition format](doc/metrics_guide.md)
 - Structured JSON logging — Loki/Grafana compatible, [request-scoped with trace_id](doc/logger_guide.md)

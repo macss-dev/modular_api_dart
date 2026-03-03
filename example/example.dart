@@ -10,7 +10,7 @@ Future<void> main(List<String> args) async {
     // Opt-in Prometheus metrics at GET /metrics
     metricsEnabled: true,
     // Structured JSON logging (Loki/Grafana compatible)
-    logLevel: LogLevel.debug, 
+    logLevel: LogLevel.debug,
   );
 
   // Register health checks (optional — /health works without any checks)

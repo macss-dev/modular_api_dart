@@ -133,7 +133,8 @@ class ModularApi {
     );
     _root.get('/docs', OpenApi.docs);
     _root.get('/docs/', OpenApi.docs);
-    // root.get('/openapi.json', OpenApiSpecification.openapiJson);
+    _root.get('/openapi.json', OpenApi.openapiJson);
+    _root.get('/openapi.yaml', OpenApi.openapiYaml);
 
     if (onBeforeServe != null) {
       await onBeforeServe(_root);
@@ -181,6 +182,8 @@ class ModularApi {
     /// Print info
     stdout.writeln('Docs on http://localhost:$port/docs');
     stdout.writeln('Health on http://localhost:$port/health');
+    stdout.writeln('OpenAPI JSON on http://localhost:$port/openapi.json');
+    stdout.writeln('OpenAPI YAML on http://localhost:$port/openapi.yaml');
     if (metricsEnabled) {
       stdout.writeln('Metrics on http://localhost:$port$metricsPath');
     }
