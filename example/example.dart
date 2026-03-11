@@ -3,6 +3,9 @@ import 'package:modular_api/modular_api.dart';
 // ─── Server ───────────────────────────────────────────────────────────────────
 
 Future<void> main(List<String> args) async {
+  // First positional arg overrides the default port (e.g. `dart run example/example.dart 9090`).
+  final port = args.isNotEmpty ? int.parse(args.first) : 8080;
+
   final api = ModularApi(
     basePath: '/api',
     title: 'Modular API',
@@ -25,10 +28,10 @@ Future<void> main(List<String> args) async {
 
   api.module('greetings', buildGreetingsModule);
 
-  await api.serve(port: 8080);
+  await api.serve(port: port);
 
   print('====================================');
-  print('API     → http://localhost:8080/api/greetings/hello');
+  print('API     → http://localhost:$port/api/greetings/hello');
   print('====================================');
 }
 
