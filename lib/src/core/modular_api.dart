@@ -4,7 +4,7 @@ import 'package:modular_api/src/core/logger/logging_middleware.dart';
 import 'package:modular_api/src/core/metrics/metric_registry.dart';
 import 'package:modular_api/src/core/metrics/metrics_middleware.dart';
 import 'package:modular_api/src/core/usecase/usecase_http_handler.dart';
-import 'package:modular_api/src/openapi/scalar_docs.dart';
+import 'package:modular_api/src/openapi/swagger_docs.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
@@ -132,9 +132,9 @@ class ModularApi {
       //   }
       // ],
     );
-    // Scalar API Reference docs — inline HTML, no external dependency (PRD-002).
-    _root.get('/docs', scalarDocsHandler(title: title));
-    _root.get('/docs/', scalarDocsHandler(title: title));
+    // Swagger UI docs — inline HTML, no external dependency (PRD-003).
+    _root.get('/docs', swaggerDocsHandler(title: title));
+    _root.get('/docs/', swaggerDocsHandler(title: title));
     _root.get('/openapi.json', OpenApi.openapiJson);
     _root.get('/openapi.yaml', OpenApi.openapiYaml);
 

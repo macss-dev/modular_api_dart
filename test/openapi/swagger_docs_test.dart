@@ -4,14 +4,15 @@ import 'package:modular_api/modular_api.dart';
 import 'package:modular_api/src/core/modular_api.dart' show apiRegistry;
 import 'package:test/test.dart';
 
-/// PRD-002 assertions for GET /docs — Scalar API Reference.
+/// PRD-003 assertions for GET /docs — Swagger UI (replaces Scalar).
 ///
 ///   1. GET /docs returns HTTP 200.
 ///   2. Content-Type header is text/html; charset=utf-8.
-///   3. Response body contains data-url="/openapi.json".
-///   4. Response body contains @scalar/api-reference.
+///   3. Response body contains swagger-ui-dist@5 CDN references.
+///   4. Response body contains url: "/openapi.json" Swagger UI config.
+///   5. Response body does NOT contain "scalar" (regression guard).
 void main() {
-  group('GET /docs — Scalar API Reference (PRD-002)', () {
+  group('GET /docs — Swagger UI (PRD-003)', () {
     late HttpServer server;
     late int port;
 
@@ -43,14 +44,24 @@ void main() {
       expect(resp.headers['content-type'], contains('text/html'));
     });
 
-    test('body contains data-url="/openapi.json"', () async {
+    test('body contains swagger-ui-dist@5 CSS', () async {
       final resp = await http.get(Uri.parse('http://localhost:$port/docs'));
-      expect(resp.body, contains('data-url="/openapi.json"'));
+      expect(resp.body, contains('swagger-ui-dist@5/swagger-ui.css'));
     });
 
-    test('body contains @scalar/api-reference CDN script', () async {
+    test('body contains swagger-ui-dist@5 JS bundle', () async {
       final resp = await http.get(Uri.parse('http://localhost:$port/docs'));
-      expect(resp.body, contains('@scalar/api-reference'));
+      expect(resp.body, contains('swagger-ui-dist@5/swagger-ui-bundle.js'));
+    });
+
+    test('body contains url pointing to /openapi.json', () async {
+      final resp = await http.get(Uri.parse('http://localhost:$port/docs'));
+      expect(resp.body, contains('url: "/openapi.json"'));
+    });
+
+    test('body does NOT contain scalar (PRD-003 regression guard)', () async {
+      final resp = await http.get(Uri.parse('http://localhost:$port/docs'));
+      expect(resp.body.toLowerCase(), isNot(contains('scalar')));
     });
 
     test('interpolates the API title in the HTML', () async {
