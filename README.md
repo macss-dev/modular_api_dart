@@ -41,8 +41,8 @@ curl -X POST http://localhost:8080/api/greetings/hello \
 
 **Docs** → `http://localhost:8080/docs`  
 **Health** → `http://localhost:8080/health`  
-**OpenAPI JSON** → `http://localhost:8080/openapi.json` *(also /openapi.yaml)*
-**Metrics** → `http://localhost:8080/metrics` *(opt-in)*
+**OpenAPI JSON** → `http://localhost:8080/openapi.json` *(also /openapi.yaml)*  
+**Metrics** → `http://localhost:8080/metrics` *(opt-in)*  
 
 See `example/example.dart` for the full implementation including Input, Output, UseCase with `validate()`, and the builder.
 
