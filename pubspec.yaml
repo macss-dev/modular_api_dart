@@ -13,7 +13,6 @@ environment:
 dependencies:
   shelf: ^1.4.2
   shelf_router: ^1.1.4
-  shelf_swagger_ui: ^2.0.0
 
 dev_dependencies:
   http: ^1.6.0

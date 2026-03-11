@@ -29,3 +29,4 @@ export 'src/middlewares/cors.dart' show exampleCorsMiddleware;
 
 // OpenAPI
 export 'src/openapi/openapi.dart' show OpenApi;
+export 'src/openapi/scalar_docs.dart' show scalarDocsHandler;
