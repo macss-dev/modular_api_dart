@@ -74,5 +74,22 @@ void main() {
       expect(resp.body, contains('<!DOCTYPE html>'));
       expect(resp.body, contains('</html>'));
     });
+
+    // ── PRD-004: System-aware dark mode ──────────────────────────
+
+    test('contains prefers-color-scheme media query (PRD-004)', () async {
+      final resp = await http.get(Uri.parse('http://localhost:$port/docs'));
+      expect(resp.body, contains('prefers-color-scheme: dark'));
+    });
+
+    test('contains CSS custom properties for theming (PRD-004)', () async {
+      final resp = await http.get(Uri.parse('http://localhost:$port/docs'));
+      expect(resp.body, contains('--bg-primary'));
+    });
+
+    test('preserves HTTP method accent colors in dark mode (PRD-004)', () async {
+      final resp = await http.get(Uri.parse('http://localhost:$port/docs'));
+      expect(resp.body, contains('#49cc90'));
+    });
   });
 }
