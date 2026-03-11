@@ -131,8 +131,9 @@ class ModularApi {
       //   }
       // ],
     );
-    _root.get('/docs', OpenApi.docs);
-    _root.get('/docs/', OpenApi.docs);
+    // Swagger UI docs — inline HTML, no external dependency (PRD-003).
+    _root.get('/docs', swaggerDocsHandler(title: title));
+    _root.get('/docs/', swaggerDocsHandler(title: title));
     _root.get('/openapi.json', OpenApi.openapiJson);
     _root.get('/openapi.yaml', OpenApi.openapiYaml);
 

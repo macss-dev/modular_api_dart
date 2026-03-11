@@ -2,11 +2,8 @@
 import 'dart:convert';
 import 'package:modular_api/src/core/modular_api.dart';
 import 'package:shelf/shelf.dart';
-import 'package:shelf_swagger_ui/shelf_swagger_ui.dart';
 
 class OpenApi {
-  static late Handler docs;
-
   /// Cached spec as JSON string (populated by [init]).
   static String _cachedJsonSpec = '';
 
@@ -22,8 +19,6 @@ class OpenApi {
         await jsonStringFromSchema(title: title, servers: servers, port: port);
     _cachedJsonSpec = swaggerJsonString;
     _cachedYamlSpec = jsonToYaml(jsonDecode(swaggerJsonString));
-    final ui = SwaggerUI(swaggerJsonString, title: title); // wrapper
-    docs = ui.call;
   }
 
   /// Handler for GET /openapi.json — returns the OpenAPI spec as JSON.

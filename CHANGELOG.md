@@ -6,6 +6,18 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Documentation
 
+## [0.4.1] - 2026-03-12
+
+### Changed
+
+- Replaced `shelf_swagger_ui` with built-in Swagger UI served via CDN — zero external UI dependencies
+- Built-in dark mode support for Swagger UI (system-aware via `prefers-color-scheme`)
+
+### Added
+
+- `SwaggerDocs` — internal handler serving the Swagger UI HTML page at `/docs`
+- Cross-language parity with TypeScript and Python implementations
+
 ## [0.4.0] - 2026-03-03
 
 ### Removed
